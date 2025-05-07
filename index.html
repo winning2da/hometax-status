@@ -2,39 +2,72 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>홈택스 사용 현황판</title>
+  <title>에쎈테크 홈택스 사용 현황</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard&display=swap');
     body {
-      font-family: sans-serif;
-      max-width: 500px;
-      margin: 40px auto;
+      font-family: 'Pretendard', sans-serif;
+      background: linear-gradient(to right, #f0f4ff, #ffffff);
+      max-width: 700px;
+      margin: 50px auto;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
       text-align: center;
+      font-size: 1.2em;
     }
     h1 {
+      font-size: 2.2em;
+      color: #1e3a8a;
       margin-bottom: 30px;
     }
     .status {
-      font-size: 1.2em;
-      margin: 20px 0;
+      background-color: #eef2ff;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 30px 0;
+      font-size: 1.3em;
+      color: #111827;
     }
     button {
       margin: 10px;
-      padding: 10px 20px;
-      font-size: 1em;
+      padding: 12px 24px;
+      font-size: 1.1em;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      background-color: #3b82f6;
+      color: white;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #2563eb;
+    }
+    select, label {
+      font-size: 1.1em;
+      margin: 10px 0;
+    }
+    select {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
     }
     #log {
-      margin-top: 30px;
+      margin-top: 40px;
       text-align: left;
-      font-size: 0.9em;
+      font-size: 1em;
+      background-color: #f9fafb;
+      border-radius: 10px;
+      padding: 15px;
+      border: 1px solid #e5e7eb;
+    }
+    #log p {
+      margin: 5px 0;
     }
   </style>
 </head>
 <body>
-  <h1>🏠 홈택스 사용 현황판</h1>
+  <h1>🏠 에쎈테크 홈택스 사용 현황</h1>
 
   <div class="status">
     <div><strong>현재 사용자:</strong> <span id="currentUser">없음</span></div>
@@ -46,16 +79,17 @@
     <label for="userSelect">사용자 선택:</label>
     <select id="userSelect">
       <option value="">-- 사용자 선택 --</option>
-      <option value="사용자1">사용자1</option>
-      <option value="사용자2">사용자2</option>
-      <option value="사용자3">사용자3</option>
-      <option value="사용자4">사용자4</option>
-      <option value="사용자5">사용자5</option>
-      <option value="사용자6">사용자6</option>
-      <option value="사용자7">사용자7</option>
-      <option value="사용자8">사용자8</option>
-      <option value="사용자9">사용자9</option>
-      <option value="사용자10">사용자10</option>
+      <option value="김가영(S.C.M팀)">김가영(S.C.M팀)</option>
+      <option value="김경민(S.C.M팀)">김경민(S.C.M팀)</option>
+      <option value="김은정(영업관리실)">김은정(영업관리실)</option>
+      <option value="김원진(인사총무팀)">김원진(인사총무팀)</option>
+      <option value="박나영(S.C.M팀)">박나영(S.C.M팀)</option>
+      <option value="원효로(S.C.M팀)">원효로(S.C.M팀)</option>
+      <option value="이세연(재무팀)">이세연(재무팀)</option>
+      <option value="장경록(재무팀)">장경록(재무팀)</option>
+      <option value="장지혁(재무팀)">장지혁(재무팀)</option>
+      <option value="정지성(인사총무팀)">정지성(인사총무팀)</option>
+      <option value="한신애(인사총무팀)">한신애(인사총무팀)</option>
     </select>
   </div>
 
@@ -82,6 +116,13 @@
     function startUse() {
       const user = userSelect.value;
       if (!user) return alert("사용자를 선택하세요.");
+
+      if (currentUser.textContent !== "없음" && currentUser.textContent !== user) {
+        reserveNext();
+        alert(`현재 ${currentUser.textContent} 님이 사용 중이므로, ${user} 님은 다음 순서로 예약되었습니다.`);
+        return;
+      }
+
       currentUser.textContent = user;
       startTime.textContent = nowTime();
       if (nextUser.textContent === user) nextUser.textContent = "없음";

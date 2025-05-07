@@ -94,123 +94,63 @@
     </select>
   </div>
   <div>
-    <button onclick="startUse()">지금 사용 시작하기</button>
-    <button onclick="reserveNext()">다음 순서 예약하기</button>
-    <button onclick="endUse()">사용 종료하기</button>
+    <label for="timeSlot">시간 선택 (30분 단위):</label>
+    <select id="timeSlot">
+      <option value="">-- 시간 선택 --</option>
+      <option value="08:00~08:30">08:00~08:30</option>
+      <option value="08:30~09:00">08:30~09:00</option>
+      <option value="09:00~09:30">09:00~09:30</option>
+      <option value="09:30~10:00">09:30~10:00</option>
+      <option value="10:00~10:30">10:00~10:30</option>
+      <option value="10:30~11:00">10:30~11:00</option>
+      <option value="11:00~11:30">11:00~11:30</option>
+      <option value="11:30~12:00">11:30~12:00</option>
+      <option value="13:00~13:30">13:00~13:30</option>
+      <option value="13:30~14:00">13:30~14:00</option>
+      <option value="14:00~14:30">14:00~14:30</option>
+      <option value="14:30~15:00">14:30~15:00</option>
+      <option value="15:00~15:30">15:00~15:30</option>
+      <option value="15:30~16:00">15:30~16:00</option>
+      <option value="16:00~16:30">16:00~16:30</option>
+      <option value="16:30~17:00">16:30~17:00</option>
+    </select>
+  </div>
+  <div>
+    <button onclick="reserveTimeSlot()">시간 예약하기</button>
+    <button onclick="clearLogs()">오늘 로그 초기화</button>
   </div>
   <div id="log"></div>
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
-      authDomain: "hometaxstatus.firebaseapp.com",
-      projectId: "hometaxstatus",
-      storageBucket: "hometaxstatus.appspot.com",
-      messagingSenderId: "35896080413",
-      appId: "1:35896080413:web:2c5971664492b1b0f79074"
-    };
-    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const currentUser = document.getElementById("currentUser");
-    const startTime = document.getElementById("startTime");
-    const nextUser = document.getElementById("nextUser");
-    const userSelect = document.getElementById("userSelect");
-    const logDiv = document.getElementById("log");
-    function nowTime() {
-      const d = new Date();
-      return d.toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
-    }
-    function saveStatusToFirestore(action, user) {
-      const statusDoc = db.collection("status").doc("current");
-      const logData = {
-        currentUser: currentUser.textContent,
-        nextUser: nextUser.textContent,
-        startTime: startTime.textContent,
-        lastAction: action,
-        lastActionUser: user,
-        lastActionTime: new Date().toISOString()
-      };
-      statusDoc.set(logData);
-      db.collection("hometaxLogs").add(logData);
-    }
-    async function loadStatusFromFirestore() {
-      const doc = await db.collection("status").doc("current").get();
-      if (doc.exists) {
-        const data = doc.data();
-        currentUser.textContent = data.currentUser || "없음";
-        nextUser.textContent = data.nextUser || "없음";
-        startTime.textContent = data.startTime || "-";
-      }
-    }
-    async function loadLogHistory() {
-      const snapshot = await db.collection("hometaxLogs")
-        .orderBy("lastActionTime", "desc")
-        .limit(30)
-        .get();
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const label = data.lastAction === "start" ? "🔴"
-                    : data.lastAction === "reserve" ? "⏳"
-                    : data.lastAction === "end" ? "✅"
-                    : "ℹ️";
-        const time = new Date(data.lastActionTime).toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
-        log(`${label} ${data.lastActionUser} 님이 ${actionToText(data.lastAction)}했습니다. (${time})`);
+
+    function reserveTimeSlot() {
+      const user = document.getElementById("userSelect").value;
+      const time = document.getElementById("timeSlot").value;
+      if (!user || !time) return alert("사용자와 시간을 모두 선택하세요.");
+
+      const today = new Date().toISOString().split('T')[0];
+      const docRef = db.collection("reservations").doc(`${today}_${time}`);
+      docRef.get().then((doc) => {
+        if (doc.exists) {
+          alert("이미 예약된 시간입니다.");
+        } else {
+          docRef.set({ user, time, reservedAt: new Date() });
+          alert(`${user} 님이 ${time}에 예약되었습니다.`);
+        }
       });
     }
-    function startUse() {
-      const user = userSelect.value;
-      if (!user) return alert("사용자를 선택하세요.");
-      if (currentUser.textContent !== "없음" && currentUser.textContent !== user) {
-        reserveNext();
-        alert(`현재 ${currentUser.textContent} 님이 사용 중이므로, ${user} 님은 다음 순서로 예약되었습니다.`);
-        return;
-      }
-      currentUser.textContent = user;
-      startTime.textContent = nowTime();
-      if (nextUser.textContent === user) nextUser.textContent = "없음";
-      log(`🔴 ${user} 님이 사용을 시작했습니다.`);
-      saveStatusToFirestore("start", user);
+
+    function clearLogs() {
+      if (!confirm("정말 오늘 로그를 초기화하시겠습니까?")) return;
+      db.collection("hometaxLogs").get().then(snapshot => {
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        return batch.commit();
+      }).then(() => {
+        alert("오늘 로그가 초기화되었습니다.");
+        location.reload();
+      });
     }
-    function reserveNext() {
-      const user = userSelect.value;
-      if (!user) return alert("사용자를 선택하세요.");
-      if (currentUser.textContent === user) return alert("이미 사용 중입니다.");
-      nextUser.textContent = user;
-      log(`⏳ ${user} 님이 다음 순서로 예약했습니다.`);
-      saveStatusToFirestore("reserve", user);
-    }
-    function endUse() {
-      const prevUser = currentUser.textContent;
-      if (prevUser === "없음") return alert("현재 사용 중인 사람이 없습니다.");
-      currentUser.textContent = "없음";
-      startTime.textContent = "-";
-      log(`✅ ${prevUser} 님이 사용을 종료했습니다.`);
-      if (nextUser.textContent !== "없음") {
-        const next = nextUser.textContent;
-        currentUser.textContent = next;
-        startTime.textContent = nowTime();
-        log(`🔁 ${next} 님이 자동으로 사용을 시작했습니다.`);
-        alert(`${next} 님! 지금 홈택스 사용이 가능합니다.`);
-        nextUser.textContent = "없음";
-        saveStatusToFirestore("start", next);
-      } else {
-        saveStatusToFirestore("end", prevUser);
-      }
-    }
-    function log(msg) {
-      const p = document.createElement("p");
-      p.textContent = msg;
-      logDiv.prepend(p);
-    }
-    function actionToText(action) {
-      if (action === "start") return "사용을 시작";
-      if (action === "reserve") return "다음 순서로 예약";
-      if (action === "end") return "사용을 종료";
-      return "활동";
-    }
-    window.addEventListener("load", async () => {
-      await loadStatusFromFirestore();
-      await loadLogHistory();
-    });
   </script>
 </body>
 </html>

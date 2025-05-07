@@ -120,7 +120,16 @@
     <button onclick="clearLogs()">오늘 로그 초기화</button>
   </div>
   <div id="log"></div>
-  <script>
+  
+  const firebaseConfig = {
+    apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
+    authDomain: "hometaxstatus.firebaseapp.com",
+    projectId: "hometaxstatus",
+    storageBucket: "hometaxstatus.appspot.com",
+    messagingSenderId: "35896080413",
+    appId: "1:35896080413:web:2c5971664492b1b0f79074"
+  };
+  firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     function reserveTimeSlot() {

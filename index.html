@@ -1,4 +1,4 @@
-<!-- ✅ 최종버전: logs를 status/current/logs → hometaxLogs 독립 컬렉션으로 이동 적용 -->
+<!-- ✅ 이전 버전 복원: 예약 기능 제거, 기본 상태 복원 -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -46,11 +46,8 @@
     button:hover {
       background-color: #2563eb;
     }
-    select, label {
-      font-size: 1.1em;
-      margin: 10px 0;
-    }
     select {
+      font-size: 1.1em;
       padding: 6px 12px;
       border-radius: 6px;
       border: 1px solid #ccc;
@@ -94,62 +91,73 @@
     </select>
   </div>
   <div>
-    <label for="timeSlot">시간 선택 (30분 단위):</label>
-    <select id="timeSlot">
-      <option value="">-- 시간 선택 --</option>
-      <option value="08:00~08:30">08:00~08:30</option>
-      <option value="08:30~09:00">08:30~09:00</option>
-      <option value="09:00~09:30">09:00~09:30</option>
-      <option value="09:30~10:00">09:30~10:00</option>
-      <option value="10:00~10:30">10:00~10:30</option>
-      <option value="10:30~11:00">10:30~11:00</option>
-      <option value="11:00~11:30">11:00~11:30</option>
-      <option value="11:30~12:00">11:30~12:00</option>
-      <option value="13:00~13:30">13:00~13:30</option>
-      <option value="13:30~14:00">13:30~14:00</option>
-      <option value="14:00~14:30">14:00~14:30</option>
-      <option value="14:30~15:00">14:30~15:00</option>
-      <option value="15:00~15:30">15:00~15:30</option>
-      <option value="15:30~16:00">15:30~16:00</option>
-      <option value="16:00~16:30">16:00~16:30</option>
-      <option value="16:30~17:00">16:30~17:00</option>
-    </select>
-  </div>
-  <div>
-    <button onclick="reserveTimeSlot()">시간 예약하기</button>
-    <button onclick="clearLogs()">오늘 로그 초기화</button>
+    <button onclick="startUse()">지금 사용 시작하기</button>
+    <button onclick="endUse()">사용 종료하기</button>
   </div>
   <div id="log"></div>
 
   <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
-    authDomain: "hometaxstatus.firebaseapp.com",
-    projectId: "hometaxstatus",
-    storageBucket: "hometaxstatus.appspot.com",
-    messagingSenderId: "35896080413",
-    appId: "1:35896080413:web:2c5971664492b1b0f79074"
-  };
-  firebase.initializeApp(firebaseConfig);
+    const firebaseConfig = {
+      apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
+      authDomain: "hometaxstatus.firebaseapp.com",
+      projectId: "hometaxstatus",
+      storageBucket: "hometaxstatus.appspot.com",
+      messagingSenderId: "35896080413",
+      appId: "1:35896080413:web:2c5971664492b1b0f79074"
+    };
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    function reserveTimeSlot() {
+    function startUse() {
       const user = document.getElementById("userSelect").value;
-      const time = document.getElementById("timeSlot").value;
-      if (!user || !time) return alert("사용자와 시간을 모두 선택하세요.");
+      if (!user) return alert("사용자를 선택하세요.");
 
-      const today = new Date().toISOString().split('T')[0];
-      const docRef = db.collection("reservations").doc(`${today}_${time}`);
-      docRef.get().then((doc) => {
-        if (doc.exists) {
-          alert("이미 예약된 시간입니다.");
-        } else {
-          docRef.set({ user, time, reservedAt: new Date() });
-          alert(`${user} 님이 ${time}에 예약되었습니다.`);
-        }
-      });
+      const now = new Date();
+      const data = {
+        user,
+        startTime: now.toLocaleTimeString(),
+        timestamp: now
+      };
+      db.collection("status").doc("current").set(data);
+      db.collection("hometaxLogs").add(data);
+      updateUI(user, data.startTime);
     }
 
+    function endUse() {
+      db.collection("status").doc("current").delete();
+      updateUI("없음", "-");
+    }
+
+    function updateUI(user, time) {
+      document.getElementById("currentUser").textContent = user;
+      document.getElementById("startTime").textContent = time;
+      document.getElementById("nextUser").textContent = "없음";
+    }
+
+    function loadCurrentStatus() {
+      db.collection("status").doc("current").get().then(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          updateUI(data.user, data.startTime);
+        }
+      });
+
+      db.collection("hometaxLogs").orderBy("timestamp", "desc").limit(30).get()
+        .then(snapshot => {
+          const logDiv = document.getElementById("log");
+          logDiv.innerHTML = "<h3>최근 사용 로그</h3>";
+          snapshot.forEach(doc => {
+            const entry = doc.data();
+            logDiv.innerHTML += `<p>🕒 ${entry.startTime} - ${entry.user}</p>`;
+          });
+        });
+    }
+
+    window.onload = loadCurrentStatus;
+  </script>
+  <button onclick="clearLogs()" style="position: fixed; bottom: 10px; left: 10px; font-size: 0.8em; padding: 6px 10px; background-color: #555; color: white; border: none; border-radius: 6px; opacity: 0.5;">초기화</button>
+
+  <script>
     function clearLogs() {
       if (!confirm("정말 오늘 로그를 초기화하시겠습니까?")) return;
       db.collection("hometaxLogs").get().then(snapshot => {

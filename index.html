@@ -1,3 +1,5 @@
+// ✅ 최종버전: logs를 status/current/logs → hometaxLogs 독립 컬렉션으로 이동 적용
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -137,23 +139,21 @@
         lastActionTime: new Date().toISOString()
       };
       statusDoc.set(logData);
-      statusDoc.collection("logs").add(logData);
+      db.collection("hometaxLogs").add(logData);
     }
 
     async function loadStatusFromFirestore() {
       const doc = await db.collection("status").doc("current").get();
       if (doc.exists) {
         const data = doc.data();
-        if (data.currentUser) currentUser.textContent = data.currentUser;
-        if (data.nextUser) nextUser.textContent = data.nextUser;
-        if (data.startTime) startTime.textContent = data.startTime;
+        currentUser.textContent = data.currentUser || "없음";
+        nextUser.textContent = data.nextUser || "없음";
+        startTime.textContent = data.startTime || "-";
       }
     }
 
     async function loadLogHistory() {
-      const snapshot = await db.collection("status")
-        .doc("current")
-        .collection("logs")
+      const snapshot = await db.collection("hometaxLogs")
         .orderBy("lastActionTime", "desc")
         .limit(30)
         .get();

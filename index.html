@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>에쎈테크 홈택스 사용 현황</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Pretendard&display=swap');
     body {
@@ -102,6 +104,18 @@
   <div id="log"></div>
 
   <script>
+    // Firebase 초기화
+    const firebaseConfig = {
+      apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
+      authDomain: "hometaxstatus.firebaseapp.com",
+      projectId: "hometaxstatus",
+      storageBucket: "hometaxstatus.appspot.com",
+      messagingSenderId: "35896080413",
+      appId: "1:35896080413:web:2c5971664492b1b0f79074"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     const currentUser = document.getElementById("currentUser");
     const startTime = document.getElementById("startTime");
     const nextUser = document.getElementById("nextUser");
@@ -111,6 +125,14 @@
     function nowTime() {
       const d = new Date();
       return d.toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function logToFirebase(action, user) {
+      db.collection("hometaxLogs").add({
+        action,
+        user,
+        time: new Date().toISOString()
+      });
     }
 
     function startUse() {
@@ -127,6 +149,7 @@
       startTime.textContent = nowTime();
       if (nextUser.textContent === user) nextUser.textContent = "없음";
       log(`🔴 ${user} 님이 사용을 시작했습니다.`);
+      logToFirebase("start", user);
     }
 
     function reserveNext() {
@@ -135,6 +158,7 @@
       if (currentUser.textContent === user) return alert("이미 사용 중입니다.");
       nextUser.textContent = user;
       log(`⏳ ${user} 님이 다음 순서로 예약했습니다.`);
+      logToFirebase("reserve", user);
     }
 
     function endUse() {
@@ -143,10 +167,12 @@
       currentUser.textContent = "없음";
       startTime.textContent = "-";
       log(`✅ ${prevUser} 님이 사용을 종료했습니다.`);
+      logToFirebase("end", prevUser);
       if (nextUser.textContent !== "없음") {
         currentUser.textContent = nextUser.textContent;
         startTime.textContent = nowTime();
         log(`🔁 ${nextUser.textContent} 님이 자동으로 사용을 시작했습니다.`);
+        logToFirebase("start", nextUser.textContent);
         nextUser.textContent = "없음";
       }
     }

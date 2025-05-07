@@ -126,12 +126,14 @@
       return d.toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
     }
 
-    function saveStatusToFirestore() {
+    function saveStatusToFirestore(action, user) {
       db.collection("status").doc("current").set({
         currentUser: currentUser.textContent,
         nextUser: nextUser.textContent,
         startTime: startTime.textContent,
-        updatedAt: new Date().toISOString()
+        lastAction: action,
+        lastActionUser: user,
+        lastActionTime: new Date().toISOString()
       });
     }
 
@@ -142,17 +144,15 @@
         if (data.currentUser) currentUser.textContent = data.currentUser;
         if (data.nextUser) nextUser.textContent = data.nextUser;
         if (data.startTime) startTime.textContent = data.startTime;
+        if (data.lastAction && data.lastActionUser && data.lastActionTime) {
+          const label = data.lastAction === "start" ? "🔴"
+                      : data.lastAction === "reserve" ? "⏳"
+                      : data.lastAction === "end" ? "✅"
+                      : "ℹ️";
+          const time = new Date(data.lastActionTime).toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
+          log(`${label} ${data.lastActionUser} 님이 ${actionToText(data.lastAction)}했습니다. (${time})`);
+        }
       }
-    }
-
-    function logToFirebase(action, user, callback) {
-      db.collection("hometaxLogs").add({
-        action,
-        user,
-        time: new Date().toISOString()
-      }).then(() => {
-        if (callback) callback();
-      });
     }
 
     function startUse() {
@@ -169,7 +169,7 @@
       startTime.textContent = nowTime();
       if (nextUser.textContent === user) nextUser.textContent = "없음";
       log(`🔴 ${user} 님이 사용을 시작했습니다.`);
-      logToFirebase("start", user, saveStatusToFirestore);
+      saveStatusToFirestore("start", user);
     }
 
     function reserveNext() {
@@ -178,7 +178,7 @@
       if (currentUser.textContent === user) return alert("이미 사용 중입니다.");
       nextUser.textContent = user;
       log(`⏳ ${user} 님이 다음 순서로 예약했습니다.`);
-      logToFirebase("reserve", user, saveStatusToFirestore);
+      saveStatusToFirestore("reserve", user);
     }
 
     function endUse() {
@@ -187,19 +187,18 @@
       currentUser.textContent = "없음";
       startTime.textContent = "-";
       log(`✅ ${prevUser} 님이 사용을 종료했습니다.`);
-      logToFirebase("end", prevUser, () => {
-        if (nextUser.textContent !== "없음") {
-          const next = nextUser.textContent;
-          currentUser.textContent = next;
-          startTime.textContent = nowTime();
-          log(`🔁 ${next} 님이 자동으로 사용을 시작했습니다.`);
-          logToFirebase("start", next, saveStatusToFirestore);
-          alert(`${next} 님! 지금 홈택스 사용이 가능합니다.`);
-          nextUser.textContent = "없음";
-        } else {
-          saveStatusToFirestore();
-        }
-      });
+
+      if (nextUser.textContent !== "없음") {
+        const next = nextUser.textContent;
+        currentUser.textContent = next;
+        startTime.textContent = nowTime();
+        log(`🔁 ${next} 님이 자동으로 사용을 시작했습니다.`);
+        alert(`${next} 님! 지금 홈택스 사용이 가능합니다.`);
+        nextUser.textContent = "없음";
+        saveStatusToFirestore("start", next);
+      } else {
+        saveStatusToFirestore("end", prevUser);
+      }
     }
 
     function log(msg) {
@@ -217,20 +216,6 @@
 
     window.addEventListener("load", async () => {
       await loadStatusFromFirestore();
-      const snapshot = await db.collection("hometaxLogs")
-        .orderBy("time", "desc")
-        .limit(30)
-        .get();
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const time = new Date(data.time).toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
-        const label = data.action === "start" ? "🔴"
-                    : data.action === "reserve" ? "⏳"
-                    : data.action === "end" ? "✅"
-                    : "ℹ️";
-        log(`${label} ${data.user} 님이 ${actionToText(data.action)}했습니다. (${time})`);
-      });
     });
   </script>
 </body>

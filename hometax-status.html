@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>홈택스 사용 현황판</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 40px auto;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+    }
+    .status {
+      font-size: 1.2em;
+      margin: 20px 0;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 1em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    #log {
+      margin-top: 30px;
+      text-align: left;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>🏠 홈택스 사용 현황판</h1>
+
+  <div class="status">
+    <div><strong>현재 사용자:</strong> <span id="currentUser">없음</span></div>
+    <div><strong>사용 시작 시간:</strong> <span id="startTime">-</span></div>
+    <div><strong>👉 다음 사용자:</strong> <span id="nextUser">없음</span></div>
+  </div>
+
+  <div>
+    <label for="userSelect">사용자 선택:</label>
+    <select id="userSelect">
+      <option value="">-- 사용자 선택 --</option>
+      <option value="사용자1">사용자1</option>
+      <option value="사용자2">사용자2</option>
+      <option value="사용자3">사용자3</option>
+      <option value="사용자4">사용자4</option>
+      <option value="사용자5">사용자5</option>
+      <option value="사용자6">사용자6</option>
+      <option value="사용자7">사용자7</option>
+      <option value="사용자8">사용자8</option>
+      <option value="사용자9">사용자9</option>
+      <option value="사용자10">사용자10</option>
+    </select>
+  </div>
+
+  <div>
+    <button onclick="startUse()">지금 사용 시작하기</button>
+    <button onclick="reserveNext()">다음 순서 예약하기</button>
+    <button onclick="endUse()">사용 종료하기</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script>
+    const currentUser = document.getElementById("currentUser");
+    const startTime = document.getElementById("startTime");
+    const nextUser = document.getElementById("nextUser");
+    const userSelect = document.getElementById("userSelect");
+    const logDiv = document.getElementById("log");
+
+    function nowTime() {
+      const d = new Date();
+      return d.toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function startUse() {
+      const user = userSelect.value;
+      if (!user) return alert("사용자를 선택하세요.");
+      currentUser.textContent = user;
+      startTime.textContent = nowTime();
+      if (nextUser.textContent === user) nextUser.textContent = "없음";
+      log(`🔴 ${user} 님이 사용을 시작했습니다.`);
+    }
+
+    function reserveNext() {
+      const user = userSelect.value;
+      if (!user) return alert("사용자를 선택하세요.");
+      if (currentUser.textContent === user) return alert("이미 사용 중입니다.");
+      nextUser.textContent = user;
+      log(`⏳ ${user} 님이 다음 순서로 예약했습니다.`);
+    }
+
+    function endUse() {
+      const prevUser = currentUser.textContent;
+      if (prevUser === "없음") return alert("현재 사용 중인 사람이 없습니다.");
+      currentUser.textContent = "없음";
+      startTime.textContent = "-";
+      log(`✅ ${prevUser} 님이 사용을 종료했습니다.`);
+      if (nextUser.textContent !== "없음") {
+        currentUser.textContent = nextUser.textContent;
+        startTime.textContent = nowTime();
+        log(`🔁 ${nextUser.textContent} 님이 자동으로 사용을 시작했습니다.`);
+        nextUser.textContent = "없음";
+      }
+    }
+
+    function log(msg) {
+      const p = document.createElement("p");
+      p.textContent = msg;
+      logDiv.prepend(p);
+    }
+  </script>
+</body>
+</html>

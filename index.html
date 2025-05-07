@@ -140,8 +140,10 @@
           db.collection("status").doc("current").set(newData);
           db.collection("hometaxLogs").add({ ...newData, type: '전환' });
           updateUI(nextUser, newData.startTime);
+          db.collection("hometaxLogs").add({ user: nextUser, timestamp: now, type: '전환', message: `${nextUser} 님이 자동으로 사용을 시작했습니다.` });
           alert(`${nextUser} 님! 지금 홈택스 사용이 가능합니다.`);
         } else {
+          db.collection("hometaxLogs").add({ user: prevUser, timestamp: new Date(), type: '종료', message: `${prevUser} 님이 사용을 종료했습니다.` });
           db.collection("status").doc("current").delete();
           updateUI("없음", "-");
         }
@@ -172,8 +174,8 @@
           logDiv.innerHTML = "<h3>최근 사용 로그</h3>";
           snapshot.forEach(doc => {
             const entry = doc.data();
-            const label = entry.type === '예약' ? '📌 예약' : entry.type === '전환' ? '🔁 전환' : '🕒 시작';
-            logDiv.innerHTML += `<p>${label} ${entry.startTime || ''} - ${entry.user}</p>`;
+            const label = entry.type === '예약' ? '⏳' : entry.type === '전환' ? '🟦' : entry.type === '종료' ? '✅' : '🕒';
+            logDiv.innerHTML += `<p>${label} ${entry.message || (entry.startTime + ' - ' + entry.user)}</p>`;
           });
         });
     }
@@ -188,6 +190,8 @@
         db.collection("status").doc("current").set({
           ...data,
           nextUser: user
+        });
+        db.collection("hometaxLogs").add({ user, timestamp: new Date(), type: '예약', message: `${user} 님이 다음 순서로 예약했습니다.` });
         });
         db.collection("hometaxLogs").add({ user, timestamp: new Date(), type: '예약' });
         document.getElementById("nextUser").textContent = user;

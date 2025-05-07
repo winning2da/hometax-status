@@ -185,18 +185,22 @@
       if (!user) return alert("사용자를 선택하세요.");
       const current = document.getElementById("currentUser").textContent;
       if (current === user) return alert("이미 사용 중입니다.");
+
       db.collection("status").doc("current").get().then(doc => {
         const data = doc.exists ? doc.data() : {};
         db.collection("status").doc("current").set({
           ...data,
           nextUser: user
+        }).then(() => {
+          db.collection("hometaxLogs").add({
+            user,
+            timestamp: new Date(),
+            type: '예약',
+            message: `${user} 님이 다음 순서로 예약했습니다.`
+          });
+          document.getElementById("nextUser").textContent = user;
+          alert(`${user} 님이 다음 순서로 예약되었습니다.`);
         });
-        db.collection("hometaxLogs").add({ user, timestamp: new Date(), type: '예약', message: `${user} 님이 다음 순서로 예약했습니다.` });
-        });
-        db.collection("hometaxLogs").add({ user, timestamp: new Date(), type: '예약' });
-        document.getElementById("nextUser").textContent = user;
-        alert(`${user} 님이 다음 순서로 예약되었습니다.`);
-      });
       });
     }
 

@@ -104,7 +104,6 @@
   <div id="log"></div>
 
   <script>
-    // Firebase 초기화
     const firebaseConfig = {
       apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
       authDomain: "hometaxstatus.firebaseapp.com",
@@ -169,10 +168,12 @@
       log(`✅ ${prevUser} 님이 사용을 종료했습니다.`);
       logToFirebase("end", prevUser);
       if (nextUser.textContent !== "없음") {
-        currentUser.textContent = nextUser.textContent;
+        const next = nextUser.textContent;
+        currentUser.textContent = next;
         startTime.textContent = nowTime();
-        log(`🔁 ${nextUser.textContent} 님이 자동으로 사용을 시작했습니다.`);
-        logToFirebase("start", nextUser.textContent);
+        log(`🔁 ${next} 님이 자동으로 사용을 시작했습니다.`);
+        logToFirebase("start", next);
+        alert(`${next} 님! 지금 홈택스 사용이 가능합니다.`);
         nextUser.textContent = "없음";
       }
     }
@@ -182,6 +183,30 @@
       p.textContent = msg;
       logDiv.prepend(p);
     }
+
+    function actionToText(action) {
+      if (action === "start") return "사용을 시작";
+      if (action === "reserve") return "다음 순서로 예약";
+      if (action === "end") return "사용을 종료";
+      return "활동";
+    }
+
+    window.addEventListener("load", async () => {
+      const snapshot = await db.collection("hometaxLogs")
+        .orderBy("time", "desc")
+        .limit(30)
+        .get();
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const time = new Date(data.time).toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
+        const label = data.action === "start" ? "🔴"
+                    : data.action === "reserve" ? "⏳"
+                    : data.action === "end" ? "✅"
+                    : "ℹ️";
+        log(`${label} ${data.user} 님이 ${actionToText(data.action)}했습니다. (${time})`);
+      });
+    });
   </script>
 </body>
 </html>

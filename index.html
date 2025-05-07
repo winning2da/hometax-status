@@ -139,9 +139,9 @@
       const doc = await db.collection("status").doc("current").get();
       if (doc.exists) {
         const data = doc.data();
-        currentUser.textContent = data.currentUser || "없음";
-        nextUser.textContent = data.nextUser || "없음";
-        startTime.textContent = data.startTime || "-";
+        if (data.currentUser) currentUser.textContent = data.currentUser;
+        if (data.nextUser) nextUser.textContent = data.nextUser;
+        if (data.startTime) startTime.textContent = data.startTime;
       }
     }
 

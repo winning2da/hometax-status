@@ -1,3 +1,4 @@
+<!-- ✅ 최종버전: logs를 status/current/logs → hometaxLogs 독립 컬렉션으로 이동 적용 -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -70,13 +71,11 @@
 </head>
 <body>
   <h1>🏠 에쎈테크 홈택스 사용 현황</h1>
-
   <div class="status">
     <div><strong>현재 사용자:</strong> <span id="currentUser">없음</span></div>
     <div><strong>사용 시작 시간:</strong> <span id="startTime">-</span></div>
     <div><strong>👉 다음 사용자:</strong> <span id="nextUser">없음</span></div>
   </div>
-
   <div>
     <label for="userSelect">사용자 선택:</label>
     <select id="userSelect">
@@ -94,15 +93,12 @@
       <option value="한신애(인사총무팀)">한신애(인사총무팀)</option>
     </select>
   </div>
-
   <div>
     <button onclick="startUse()">지금 사용 시작하기</button>
     <button onclick="reserveNext()">다음 순서 예약하기</button>
     <button onclick="endUse()">사용 종료하기</button>
   </div>
-
   <div id="log"></div>
-
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
@@ -114,18 +110,15 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
     const currentUser = document.getElementById("currentUser");
     const startTime = document.getElementById("startTime");
     const nextUser = document.getElementById("nextUser");
     const userSelect = document.getElementById("userSelect");
     const logDiv = document.getElementById("log");
-
     function nowTime() {
       const d = new Date();
       return d.toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
     }
-
     function saveStatusToFirestore(action, user) {
       const statusDoc = db.collection("status").doc("current");
       const logData = {
@@ -139,7 +132,6 @@
       statusDoc.set(logData);
       db.collection("hometaxLogs").add(logData);
     }
-
     async function loadStatusFromFirestore() {
       const doc = await db.collection("status").doc("current").get();
       if (doc.exists) {
@@ -149,7 +141,6 @@
         startTime.textContent = data.startTime || "-";
       }
     }
-
     async function loadLogHistory() {
       const snapshot = await db.collection("hometaxLogs")
         .orderBy("lastActionTime", "desc")
@@ -165,7 +156,6 @@
         log(`${label} ${data.lastActionUser} 님이 ${actionToText(data.lastAction)}했습니다. (${time})`);
       });
     }
-
     function startUse() {
       const user = userSelect.value;
       if (!user) return alert("사용자를 선택하세요.");
@@ -180,7 +170,6 @@
       log(`🔴 ${user} 님이 사용을 시작했습니다.`);
       saveStatusToFirestore("start", user);
     }
-
     function reserveNext() {
       const user = userSelect.value;
       if (!user) return alert("사용자를 선택하세요.");
@@ -189,7 +178,6 @@
       log(`⏳ ${user} 님이 다음 순서로 예약했습니다.`);
       saveStatusToFirestore("reserve", user);
     }
-
     function endUse() {
       const prevUser = currentUser.textContent;
       if (prevUser === "없음") return alert("현재 사용 중인 사람이 없습니다.");
@@ -208,20 +196,17 @@
         saveStatusToFirestore("end", prevUser);
       }
     }
-
     function log(msg) {
       const p = document.createElement("p");
       p.textContent = msg;
       logDiv.prepend(p);
     }
-
     function actionToText(action) {
       if (action === "start") return "사용을 시작";
       if (action === "reserve") return "다음 순서로 예약";
       if (action === "end") return "사용을 종료";
       return "활동";
     }
-
     window.addEventListener("load", async () => {
       await loadStatusFromFirestore();
       await loadLogHistory();

@@ -127,14 +127,17 @@
     }
 
     function saveStatusToFirestore(action, user) {
-      db.collection("status").doc("current").set({
+      const statusDoc = db.collection("status").doc("current");
+      const logData = {
         currentUser: currentUser.textContent,
         nextUser: nextUser.textContent,
         startTime: startTime.textContent,
         lastAction: action,
         lastActionUser: user,
         lastActionTime: new Date().toISOString()
-      });
+      };
+      statusDoc.set(logData);
+      statusDoc.collection("logs").add(logData);
     }
 
     async function loadStatusFromFirestore() {
@@ -144,27 +147,35 @@
         if (data.currentUser) currentUser.textContent = data.currentUser;
         if (data.nextUser) nextUser.textContent = data.nextUser;
         if (data.startTime) startTime.textContent = data.startTime;
-        if (data.lastAction && data.lastActionUser && data.lastActionTime) {
-          const label = data.lastAction === "start" ? "🔴"
-                      : data.lastAction === "reserve" ? "⏳"
-                      : data.lastAction === "end" ? "✅"
-                      : "ℹ️";
-          const time = new Date(data.lastActionTime).toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
-          log(`${label} ${data.lastActionUser} 님이 ${actionToText(data.lastAction)}했습니다. (${time})`);
-        }
       }
+    }
+
+    async function loadLogHistory() {
+      const snapshot = await db.collection("status")
+        .doc("current")
+        .collection("logs")
+        .orderBy("lastActionTime", "desc")
+        .limit(30)
+        .get();
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const label = data.lastAction === "start" ? "🔴"
+                    : data.lastAction === "reserve" ? "⏳"
+                    : data.lastAction === "end" ? "✅"
+                    : "ℹ️";
+        const time = new Date(data.lastActionTime).toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' });
+        log(`${label} ${data.lastActionUser} 님이 ${actionToText(data.lastAction)}했습니다. (${time})`);
+      });
     }
 
     function startUse() {
       const user = userSelect.value;
       if (!user) return alert("사용자를 선택하세요.");
-
       if (currentUser.textContent !== "없음" && currentUser.textContent !== user) {
         reserveNext();
         alert(`현재 ${currentUser.textContent} 님이 사용 중이므로, ${user} 님은 다음 순서로 예약되었습니다.`);
         return;
       }
-
       currentUser.textContent = user;
       startTime.textContent = nowTime();
       if (nextUser.textContent === user) nextUser.textContent = "없음";
@@ -187,7 +198,6 @@
       currentUser.textContent = "없음";
       startTime.textContent = "-";
       log(`✅ ${prevUser} 님이 사용을 종료했습니다.`);
-
       if (nextUser.textContent !== "없음") {
         const next = nextUser.textContent;
         currentUser.textContent = next;
@@ -216,6 +226,7 @@
 
     window.addEventListener("load", async () => {
       await loadStatusFromFirestore();
+      await loadLogHistory();
     });
   </script>
 </body>

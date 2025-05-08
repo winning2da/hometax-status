@@ -71,8 +71,6 @@
   <div class="status">
     <div><strong>현재 사용자:</strong> <span id="currentUser">없음</span></div>
     <div><strong>사용 시작 시간:</strong> <span id="startTime">-</span></div>
-    
-    <div><strong>사용 시간:</strong> <span id="duration">-</span></div>
     <div><strong>👉 다음 사용자:</strong> <span id="nextUser">없음</span></div>
   </div>
   <div>
@@ -114,23 +112,6 @@
     function updateUI(user, time) {
       document.getElementById("currentUser").textContent = user;
       document.getElementById("startTime").textContent = time;
-
-      // 실시간 사용 시간 표시
-      clearInterval(window.durationInterval);
-      if (time && time !== '-' && user !== '없음') {
-        const [sh, sm, ss] = time.split(':').map(t => Number(t));
-        start.setHours(sh, sm, ss);
-        window.durationInterval = setInterval(() => {
-          const now = new Date();
-          let diff = now - start;
-          if (diff < 0) diff += 24 * 60 * 60 * 1000; // 자정 넘김 보정
-          const mins = Math.floor(diff / 60000);
-          const secs = Math.floor((diff % 60000) / 1000);
-          document.getElementById("duration").textContent = `${mins}분 ${secs}초`;
-        }, 1000);
-      } else {
-        document.getElementById("duration").textContent = "-";
-      }
       db.collection("status").doc("current").get().then(doc => {
         const data = doc.data();
         const queue = data && data.nextUser ? data.nextUser.split(", ") : [];
@@ -153,7 +134,7 @@
         const now = new Date();
         const data = {
           user,
-          startTime: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`,
+          startTime: now.toLocaleTimeString(),
           timestamp: now,
           nextUser: doc.exists && doc.data().nextUser ? doc.data().nextUser : "없음"
         };
@@ -202,7 +183,7 @@
         if (nextUser !== "없음") {
           const newData = {
             user: nextUser,
-            startTime: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`,
+            startTime: now.toLocaleTimeString(),
             timestamp: now
           };
           db.collection("status").doc("current").set({ ...newData, nextUser: nextQueue.join(", ") });

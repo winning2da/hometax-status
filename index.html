@@ -7,78 +7,64 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <style>
     body {
-      font-family: Pretendard, sans-serif;
-      background: linear-gradient(to right, #f0f4ff, #ffffff);
+      font-family: sans-serif;
       max-width: 700px;
-      margin: 50px auto;
+      margin: 40px auto;
       padding: 20px;
-      border-radius: 16px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      background-color: #f9fafb;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    h1 {
-      font-size: 1.8em;
-      color: #1e3a8a;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .status {
-      background-color: #eef3ff;
-      padding: 16px;
-      border-radius: 10px;
-      margin: 20px 0;
-      line-height: 1.6;
-    }
-    select, button {
-      font-size: 1em;
-      padding: 10px;
-      margin: 6px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
+    h1 { text-align: center; }
+    .status { margin: 20px 0; font-size: 1.1em; }
     button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 1em;
+      border: none;
+      border-radius: 6px;
       background-color: #3b82f6;
       color: white;
-      font-weight: bold;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #2563eb;
+    select {
+      font-size: 1em;
+      padding: 5px 10px;
+      margin-bottom: 10px;
     }
-    #log {
-      margin-top: 30px;
-      padding: 15px;
-      background: #ffffff;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-    }
-    #log h3 {
-      margin-top: 0;
+    #log { margin-top: 30px; background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+    #log p { margin: 4px 0; }
+    .hidden-btn {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      font-size: 0.8em;
+      opacity: 0.4;
     }
   </style>
 </head>
 <body>
-  <h1>🏠 에쌼테크 홈택스 사용 현황</h1>
+  <h1>에쎈테크 홈택스 사용 현황</h1>
   <div class="status">
     <div><strong>현재 사용자:</strong> <span id="currentUser">없음</span></div>
     <div><strong>사용 시작 시간:</strong> <span id="startTime">-</span></div>
-    <div><strong>사용 시간:</strong> <span id="duration">-</span></div>
-    <div><strong>👉 다음 사용자:</strong><br><span id="nextUser">없음</span></div>
+    <div><strong>👉 다음 사용자:</strong> <div id="nextUser">없음</div></div>
   </div>
   <div>
-    <label>사용자 선택:</label>
+    <label for="userSelect">사용자 선택:</label>
     <select id="userSelect">
-      <option value="">-- 사용자 선택 --</option>
-      <option>김가영(S.C.M팀)</option>
-      <option>김경민(S.C.M팀)</option>
-      <option>김은정(영업관리실)</option>
-      <option>김원진(인사총무팀)</option>
-      <option>박나영(S.C.M팀)</option>
-      <option>원협로(S.C.M팀)</option>
-      <option>이세연(장모팀)</option>
-      <option>장경록(장모팀)</option>
-      <option>장지혁(장모팀)</option>
-      <option>정지성(인사총무팀)</option>
-      <option>한신애(인사총무팀)</option>
+      <option value="">-- 선택 --</option>
+      <option value="김가영(S.C.M팀)">김가영(S.C.M팀)</option>
+      <option value="김경민(S.C.M팀)">김경민(S.C.M팀)</option>
+      <option value="김은정(영업관리실)">김은정(영업관리실)</option>
+      <option value="김원진(인사총무팀)">김원진(인사총무팀)</option>
+      <option value="박나영(S.C.M팀)">박나영(S.C.M팀)</option>
+      <option value="원효로(S.C.M팀)">원효로(S.C.M팀)</option>
+      <option value="이세연(재무팀)">이세연(재무팀)</option>
+      <option value="장경록(재무팀)">장경록(재무팀)</option>
+      <option value="장지혁(재무팀)">장지혁(재무팀)</option>
+      <option value="정지성(인사총무팀)">정지성(인사총무팀)</option>
+      <option value="한신애(인사총무팀)">한신애(인사총무팀)</option>
     </select>
   </div>
   <div>
@@ -87,41 +73,131 @@
     <button onclick="endUse()">사용 종료하기</button>
   </div>
   <div id="log"></div>
+  <button class="hidden-btn" onclick="clearLogs()">초기화</button>
 
   <script>
     const firebaseConfig = {
-      // 여기에 본인의 Firebase 설정을 입력하세요
+      apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
+      authDomain: "hometaxstatus.firebaseapp.com",
+      projectId: "hometaxstatus",
+      storageBucket: "hometaxstatus.appspot.com",
+      messagingSenderId: "35896080413",
+      appId: "1:35896080413:web:2c5971664492b1b0f79074"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+
+    function startUse() {
+      const user = document.getElementById("userSelect").value;
+      if (!user) return alert("사용자를 선택하세요.");
+      db.collection("status").doc("current").get().then(doc => {
+        if (doc.exists && doc.data().user && doc.data().user !== "없음") {
+          alert("현재 다른 사용자가 사용 중입니다. 다음 순서로 예약하세요.");
+          return;
+        }
+        const now = new Date();
+        const data = {
+          user,
+          startTime: now.toLocaleTimeString(),
+          timestamp: now,
+          nextUser: doc.exists && doc.data().nextUser ? doc.data().nextUser : ""
+        };
+        db.collection("status").doc("current").set(data);
+        db.collection("hometaxLogs").add({ ...data, type: '시작' });
+        updateUI(user, data.startTime);
+      });
+    }
 
     function reserveNext() {
       const user = document.getElementById("userSelect").value;
       if (!user) return alert("사용자를 선택하세요.");
       const current = document.getElementById("currentUser").textContent;
       if (current === user) return alert("이미 사용 중입니다.");
-
       db.collection("status").doc("current").get().then(doc => {
         const data = doc.exists ? doc.data() : {};
-        let nextQueue = data.nextUser ? data.nextUser.split(", ") : [];
-
-        if (nextQueue.includes(user)) {
-          alert("이미 예약자 명단에 있습니다.");
-          return;
-        }
-
-        nextQueue.push(user);
-        db.collection("status").doc("current").set({
-          ...data,
-          nextUser: nextQueue.join(", ")
-        });
+        let queue = data.nextUser ? data.nextUser.split(", ") : [];
+        if (queue.includes(user)) return alert("이미 예약되어 있습니다.");
+        queue.push(user);
+        db.collection("status").doc("current").set({ ...data, nextUser: queue.join(", ") });
         db.collection("hometaxLogs").add({
           user,
           timestamp: new Date(),
-          text: `${user} 님이 다음 순서로 예약했습니다.`
+          type: '예약',
+          message: `${user} 님이 다음 순서로 예약했습니다.`
         });
+        document.getElementById("nextUser").innerHTML = queue.map((u, i) => `${i + 1}순위: ${u}`).join("<br>");
+        alert(`${user} 님이 다음 순서로 예약되었습니다.`);
       });
     }
+
+    function endUse() {
+      db.collection("status").doc("current").get().then(doc => {
+        const data = doc.data();
+        const queue = data.nextUser ? data.nextUser.split(", ") : [];
+        const nextUser = queue.shift();
+        const now = new Date();
+        if (nextUser) {
+          const newData = {
+            user: nextUser,
+            startTime: now.toLocaleTimeString(),
+            timestamp: now,
+            nextUser: queue.join(", ")
+          };
+          db.collection("status").doc("current").set(newData);
+          db.collection("hometaxLogs").add({ ...newData, type: '전환', message: `${nextUser} 님이 자동으로 사용을 시작했습니다.` });
+          alert(`${nextUser} 님! 지금 사용이 가능합니다.`);
+          updateUI(nextUser, newData.startTime);
+        } else {
+          db.collection("hometaxLogs").add({ user: data.user, timestamp: now, type: '종료', message: `${data.user} 님이 사용을 종료했습니다.` });
+          db.collection("status").doc("current").delete();
+          updateUI("없음", "-");
+        }
+      });
+    }
+
+    function clearLogs() {
+      if (!confirm("정말 로그를 초기화할까요?")) return;
+      db.collection("hometaxLogs").get().then(snapshot => {
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        return batch.commit();
+      }).then(() => location.reload());
+    }
+
+    function updateUI(user, time) {
+      document.getElementById("currentUser").textContent = user;
+      document.getElementById("startTime").textContent = time;
+      db.collection("status").doc("current").get().then(doc => {
+        const queue = doc.exists && doc.data().nextUser ? doc.data().nextUser.split(", ") : [];
+        document.getElementById("nextUser").innerHTML = queue.length > 0
+          ? queue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
+          : "없음";
+      });
+    }
+
+    function loadCurrentStatus() {
+      db.collection("status").doc("current").get().then(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          updateUI(data.user, data.startTime);
+        }
+      });
+
+      db.collection("hometaxLogs")
+        .orderBy("timestamp", "desc")
+        .limit(30)
+        .onSnapshot(snapshot => {
+          const logDiv = document.getElementById("log");
+          logDiv.innerHTML = "<h3>최근 사용 로그</h3>";
+          snapshot.forEach(doc => {
+            const entry = doc.data();
+            const label = entry.type === '예약' ? '⏳' : entry.type === '전환' ? '🟦' : entry.type === '종료' ? '✅' : '🕒';
+            logDiv.innerHTML += `<p>${label} ${entry.message || (entry.startTime + ' - ' + entry.user)}</p>`;
+          });
+        });
+    }
+
+    window.onload = loadCurrentStatus;
   </script>
 </body>
 </html>

@@ -119,7 +119,6 @@
       clearInterval(window.durationInterval);
       if (time && time !== '-' && user !== '없음') {
         const [sh, sm, ss] = time.split(':').map(t => Number(t));
-        const start = new Date();
         start.setHours(sh, sm, ss);
         window.durationInterval = setInterval(() => {
           const now = new Date();

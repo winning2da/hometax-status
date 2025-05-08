@@ -114,24 +114,33 @@ function updateUI(user, time) {
   document.getElementById("startTime").textContent = time;
   db.collection("status").doc("current").get().then(doc => {
     const data = doc.data();
-    document.getElementById("nextUser").textContent = data && data.nextUser ? data.nextUser : "없음";
+    const queue = data && data.nextUser ? data.nextUser.split(", ") : [];
+    document.getElementById("nextUser").innerHTML = queue.length > 0
+      ? queue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
+      : "없음";
   });
 }
 
 function startUse() {
   const user = document.getElementById("userSelect").value;
   if (!user) return alert("사용자를 선택하세요.");
-  const now = new Date();
-  const data = {
-    user,
-    startTime: now.toLocaleTimeString(),
-    timestamp: now
-  };
+
   db.collection("status").doc("current").get().then(doc => {
-    const currentData = doc.exists ? doc.data() : {};
-    db.collection("status").doc("current").set({ ...data, nextUser: currentData.nextUser || "없음" });
+    if (doc.exists && doc.data().user && doc.data().user !== "없음") {
+      alert("현재 다른 사용자가 홈택스를 사용 중입니다. '다음 순서 예약하기'를 이용해주세요.");
+      return;
+    }
+    const now = new Date();
+    const data = {
+      user,
+      startTime: now.toLocaleTimeString(),
+      timestamp: now,
+      nextUser: doc.exists && doc.data().nextUser ? doc.data().nextUser : "없음"
+    };
+    db.collection("status").doc("current").set(data);
     db.collection("hometaxLogs").add({ ...data, type: '시작' });
     updateUI(user, data.startTime);
+  });
   });
 }
 
@@ -140,20 +149,26 @@ function reserveNext() {
   if (!user) return alert("사용자를 선택하세요.");
   const current = document.getElementById("currentUser").textContent;
   if (current === user) return alert("이미 사용 중입니다.");
+
   db.collection("status").doc("current").get().then(doc => {
     const data = doc.exists ? doc.data() : {};
-    db.collection("status").doc("current").set({
-      ...data,
-      nextUser: user
-    }).then(() => {
+    let nextUser = data.nextUser;
+    if (!nextUser || nextUser === "없음") {
+      nextUser = user;
+    } else if (nextUser !== user) {
+      nextUser = nextUser + ", " + user;
+    }
+    db.collection("status").doc("current").set({ ...data, nextUser }).then(() => {
       db.collection("hometaxLogs").add({
         user,
         timestamp: new Date(),
         type: '예약',
         message: `${user} 님이 다음 순서로 예약했습니다.`
       });
-      document.getElementById("nextUser").textContent = user;
+      document.getElementById("nextUser").textContent = nextUser;
       alert(`${user} 님이 다음 순서로 예약되었습니다.`);
+    });
+  });
     });
   });
 }
@@ -163,7 +178,8 @@ function endUse() {
   if (prevUser === "없음") return alert("현재 사용 중인 사람이 없습니다.");
   db.collection("status").doc("current").get().then(doc => {
     const data = doc.data();
-    const nextUser = data && data.nextUser ? data.nextUser : "없음";
+    let nextQueue = data && data.nextUser ? data.nextUser.split(", ") : [];
+    const nextUser = nextQueue.length > 0 ? nextQueue.shift() : "없음";
     const now = new Date();
     if (nextUser !== "없음") {
       const newData = {
@@ -171,7 +187,7 @@ function endUse() {
         startTime: now.toLocaleTimeString(),
         timestamp: now
       };
-      db.collection("status").doc("current").set(newData);
+      db.collection("status").doc("current").set({ ...newData, nextUser: nextQueue.join(", ") });
       db.collection("hometaxLogs").add({ ...newData, type: '전환', message: `${nextUser} 님이 자동으로 사용을 시작했습니다.` });
       alert(`${nextUser} 님! 지금 홈택스 사용이 가능합니다.`);
       updateUI(nextUser, newData.startTime);

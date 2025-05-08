@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>에쎈테크 홈택스 사용현황</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -27,7 +29,7 @@
 
     h1 {
       text-align: center;
-      font-size: 2em; /* 더 크게 */
+      font-size: 2em;
       margin-bottom: 30px;
       color: #333;
     }
@@ -99,12 +101,6 @@
     .queue-section li {
       margin-bottom: 4px;
     }
-
-    @media (max-width: 400px) {
-      .button-group {
-        flex-direction: column;
-      }
-    }
   </style>
 </head>
 <body>
@@ -143,14 +139,28 @@
 
     <div class="queue-section">
       <h3>예약자 목록 (순번 포함)</h3>
-      <ul id="queue-list">
-        <li>데이터 로딩 중...</li>
-      </ul>
+      <ul id="queue-list"></ul>
     </div>
   </div>
 
-  <!-- 다음 단계: Firebase SDK 연결 -->
   <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDQMGCVyByIQnqrbVYfTWTWVGcRhXrwRWY",
+      authDomain: "essen-hometax.firebaseapp.com",
+      databaseURL: "https://essen-hometax-default-rtdb.firebaseio.com",
+      projectId: "essen-hometax",
+      storageBucket: "essen-hometax.appspot.com",
+      messagingSenderId: "240420662210",
+      appId: "1:240420662210:web:4ca351a615167ab6fb845b"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const currentUserRef = db.ref("currentUser");
+    const startTimeRef = db.ref("startTime");
+    const queueRef = db.ref("queue");
+
     function getSelectedName() {
       return document.getElementById("user-select").value;
     }
@@ -158,20 +168,70 @@
     function startUse() {
       const name = getSelectedName();
       if (!name) return alert("사용자를 선택해주세요.");
-      alert(`${name}님 사용 시작 (Firebase 연동 예정)`);
+      currentUserRef.once("value").then(snapshot => {
+        if (snapshot.val()) {
+          alert("이미 사용 중입니다.");
+        } else {
+          currentUserRef.set(name);
+          startTimeRef.set(new Date().toLocaleTimeString());
+          queueRef.once("value").then(qsnap => {
+            const queue = qsnap.val() || [];
+            const updated = queue.filter(user => user !== name);
+            queueRef.set(updated);
+          });
+        }
+      });
     }
 
     function endUse() {
-      const name = getSelectedName();
-      if (!name) return alert("사용자를 선택해주세요.");
-      alert(`${name}님 사용 종료 (Firebase 연동 예정)`);
+      currentUserRef.set(null);
+      startTimeRef.set("-");
+      queueRef.once("value").then(snapshot => {
+        const queue = snapshot.val() || [];
+        if (queue.length > 0) {
+          const next = queue[0];
+          currentUserRef.set(next);
+          startTimeRef.set(new Date().toLocaleTimeString());
+          queueRef.set(queue.slice(1));
+        }
+      });
     }
 
     function reserve() {
       const name = getSelectedName();
       if (!name) return alert("사용자를 선택해주세요.");
-      alert(`${name}님 예약 완료 (Firebase 연동 예정)`);
+      queueRef.once("value").then(snapshot => {
+        const queue = snapshot.val() || [];
+        if (!queue.includes(name)) {
+          queue.push(name);
+          queueRef.set(queue);
+        } else {
+          alert("이미 예약 목록에 있습니다.");
+        }
+      });
     }
+
+    function updateUI() {
+      currentUserRef.on("value", snapshot => {
+        document.getElementById("current-user").textContent = snapshot.val() || "-";
+      });
+      startTimeRef.on("value", snapshot => {
+        document.getElementById("start-time").textContent = snapshot.val() || "-";
+      });
+      queueRef.on("value", snapshot => {
+        const list = document.getElementById("queue-list");
+        list.innerHTML = "";
+        const queue = snapshot.val() || [];
+        queue.forEach((name, i) => {
+          const li = document.createElement("li");
+          li.textContent = `${i + 1}순위: ${name}`;
+          list.appendChild(li);
+        });
+        document.getElementById("next-user").textContent = queue.length > 0 ? queue[0] : "-";
+      });
+    }
+
+    updateUI();
   </script>
 </body>
 </html>

@@ -155,7 +155,7 @@
         const now = new Date();
         const data = {
           user,
-          startTime: now.toLocaleTimeString(),
+          startTime: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`,
           timestamp: now,
           nextUser: doc.exists && doc.data().nextUser ? doc.data().nextUser : "없음"
         };
@@ -204,7 +204,7 @@
         if (nextUser !== "없음") {
           const newData = {
             user: nextUser,
-            startTime: now.toLocaleTimeString(),
+            startTime: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`,
             timestamp: now
           };
           db.collection("status").doc("current").set({ ...newData, nextUser: nextQueue.join(", ") });

@@ -118,9 +118,10 @@
       // 실시간 사용 시간 표시
       clearInterval(window.durationInterval);
       if (time && time !== '-' && user !== '없음') {
-        const [h, m, s] = time.split(':').map(Number);
+        const [h, m, s] = time.split(':');
+        const [sh, sm, ss] = [Number(h), Number(m), Number(s || 0)];
         const start = new Date();
-        start.setHours(h, m, s || 0);
+        start.setHours(sh, sm, ss);
         window.durationInterval = setInterval(() => {
           const now = new Date();
           let diff = now - start;

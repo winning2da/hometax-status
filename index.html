@@ -153,29 +153,27 @@ function reserveNext() {
 
   db.collection("status").doc("current").get().then(doc => {
     const data = doc.exists ? doc.data() : {};
-    let nextUser = data.nextUser;
-    if (!nextUser || nextUser === "없음") {
-      nextUser = user;
-    } else if (nextUser !== user) {
-      nextUser = nextUser + ", " + user;
+    let nextQueue = data.nextUser ? data.nextUser.split(", ") : [];
+    if (nextQueue.includes(user)) {
+      alert("이미 예약자 명단에 있습니다.");
+      return;
     }
-    db.collection("status").doc("current").set({ ...data, nextUser }).then(() => {
+    nextQueue.push(user);
+    db.collection("status").doc("current").set({ ...data, nextUser: nextQueue.join(", ") }).then(() => {
       db.collection("hometaxLogs").add({
         user,
         timestamp: new Date(),
         type: '예약',
         message: `${user} 님이 다음 순서로 예약했습니다.`
       });
-      const queue = nextUser.split(", ");
-      document.getElementById("nextUser").innerHTML = queue.length > 0
-        ? queue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
+      document.getElementById("nextUser").innerHTML = nextQueue.length > 0
+        ? nextQueue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
         : "없음";
       alert(`${user} 님이 다음 순서로 예약되었습니다.`);
     });
   });
-    });
-  });
 }
+
 
 function endUse() {
   const prevUser = document.getElementById("currentUser").textContent;

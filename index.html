@@ -70,7 +70,8 @@
   <h1>🏠 에쎈테크 홈택스 사용 현황</h1>
   <div class="status">
     <div><strong>현재 사용자:</strong> <span id="currentUser">없음</span></div>
-    <div><strong>사용 시작 시간:</strong> <span id="startTime">-</span></div>
+    $1
+    <div><strong>사용 시간:</strong> <span id="duration">-</span></div>
     <div><strong>👉 다음 사용자:</strong> <span id="nextUser">없음</span></div>
   </div>
   <div>
@@ -112,6 +113,24 @@
     function updateUI(user, time) {
       document.getElementById("currentUser").textContent = user;
       document.getElementById("startTime").textContent = time;
+
+      // 실시간 사용 시간 표시
+      clearInterval(window.durationInterval);
+      if (time && time !== '-' && user !== '없음') {
+        const [h, m, s] = time.split(':').map(Number);
+        const start = new Date();
+        start.setHours(h, m, s || 0);
+        window.durationInterval = setInterval(() => {
+          const now = new Date();
+          let diff = now - start;
+          if (diff < 0) diff += 24 * 60 * 60 * 1000; // 자정 넘김 보정
+          const mins = Math.floor(diff / 60000);
+          const secs = Math.floor((diff % 60000) / 1000);
+          document.getElementById("duration").textContent = `${mins}분 ${secs}초`;
+        }, 1000);
+      } else {
+        document.getElementById("duration").textContent = "-";
+      }
       db.collection("status").doc("current").get().then(doc => {
         const data = doc.data();
         const queue = data && data.nextUser ? data.nextUser.split(", ") : [];

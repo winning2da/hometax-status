@@ -62,7 +62,7 @@
     <div><strong>현재 사용자:</strong> <span id="currentUser">없음</span></div>
     <div><strong>사용 시작 시간:</strong> <span id="startTime">-</span></div>
     <div><strong>사용 시간:</strong> <span id="duration">-</span></div>
-    <div><strong>👉 다음 사용자:</strong> <span id="nextUser">없음</span></div>
+    <div><strong>👉 다음 사용자:</strong><br><span id="nextUser">없음</span></div>
   </div>
   <div>
     <label>사용자 선택:</label>
@@ -145,7 +145,7 @@
       if (!user) return alert("사용자를 선택하세요.");
       db.collection("status").doc("current").get().then(doc => {
         const data = doc.data();
-        let queue = data.nextUser ? data.nextUser.split(", ") : [];
+        let queue = data.nextUser ? data.nextUser.split(", ").filter(x => x && x !== '없음') : [];
         if (!queue.includes(user)) {
           queue.push(user);
           db.collection("status").doc("current").update({ nextUser: queue.join(", ") });
@@ -159,7 +159,7 @@
       db.collection("status").doc("current").get().then(doc => {
         const data = doc.data();
         const user = data.user;
-        const queue = data.nextUser ? data.nextUser.split(", ") : [];
+        let queue = data.nextUser ? data.nextUser.split(", ").filter(x => x && x !== '없음') : [];
         const next = queue.shift();
         const now = new Date();
         db.collection("status").doc("current").set({

@@ -4,10 +4,6 @@
   <meta charset="UTF-8">
   <title>에쎈테크 홈택스 사용현황</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     body {
       font-family: 'Segoe UI', sans-serif;
       background-color: #f4f6f8;
@@ -22,7 +18,7 @@
     .container {
       background-color: #fff;
       width: 90%;
-      max-width: 480px;
+      max-width: 500px;
       margin-top: 40px;
       padding: 30px;
       border-radius: 16px;
@@ -31,8 +27,8 @@
 
     h1 {
       text-align: center;
-      font-size: 1.5em;
-      margin-bottom: 25px;
+      font-size: 2em; /* 더 크게 */
+      margin-bottom: 30px;
       color: #333;
     }
 
@@ -86,6 +82,24 @@
       background-color: #0056b3;
     }
 
+    .queue-section {
+      margin-top: 30px;
+    }
+
+    .queue-section h3 {
+      font-size: 1.1em;
+      margin-bottom: 10px;
+      color: #444;
+    }
+
+    .queue-section ul {
+      padding-left: 20px;
+    }
+
+    .queue-section li {
+      margin-bottom: 4px;
+    }
+
     @media (max-width: 400px) {
       .button-group {
         flex-direction: column;
@@ -126,10 +140,17 @@
       <button onclick="endUse()">사용 종료</button>
       <button onclick="reserve()">예약</button>
     </div>
+
+    <div class="queue-section">
+      <h3>예약자 목록 (순번 포함)</h3>
+      <ul id="queue-list">
+        <li>데이터 로딩 중...</li>
+      </ul>
+    </div>
   </div>
 
+  <!-- 다음 단계: Firebase SDK 연결 -->
   <script>
-    // 추후 Firebase 연동 예정
     function getSelectedName() {
       return document.getElementById("user-select").value;
     }
@@ -137,19 +158,19 @@
     function startUse() {
       const name = getSelectedName();
       if (!name) return alert("사용자를 선택해주세요.");
-      alert(`${name}님 사용 시작 - (Firebase 연동 예정)`);
+      alert(`${name}님 사용 시작 (Firebase 연동 예정)`);
     }
 
     function endUse() {
       const name = getSelectedName();
       if (!name) return alert("사용자를 선택해주세요.");
-      alert(`${name}님 사용 종료 - (Firebase 연동 예정)`);
+      alert(`${name}님 사용 종료 (Firebase 연동 예정)`);
     }
 
     function reserve() {
       const name = getSelectedName();
       if (!name) return alert("사용자를 선택해주세요.");
-      alert(`${name}님 다음 순서 예약 - (Firebase 연동 예정)`);
+      alert(`${name}님 예약 완료 (Firebase 연동 예정)`);
     }
   </script>
 </body>

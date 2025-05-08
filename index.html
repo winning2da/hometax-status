@@ -1,4 +1,4 @@
-<!-- ✅ 이전 버전 복원: 예약 기능 제거, 기본 상태 복원 -->
+<!-- ✅ 정상 작동 전체 코드 (예약 순서, 충돌 방지, 실시간 로그 반영) -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -98,133 +98,131 @@
   <div id="log"></div>
 
   <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
-  authDomain: "hometaxstatus.firebaseapp.com",
-  projectId: "hometaxstatus",
-  storageBucket: "hometaxstatus.appspot.com",
-  messagingSenderId: "35896080413",
-  appId: "1:35896080413:web:2c5971664492b1b0f79074"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-function updateUI(user, time) {
-  document.getElementById("currentUser").textContent = user;
-  document.getElementById("startTime").textContent = time;
-  db.collection("status").doc("current").get().then(doc => {
-    const data = doc.data();
-    const queue = data && data.nextUser ? data.nextUser.split(", ") : [];
-    document.getElementById("nextUser").innerHTML = queue.length > 0
-      ? queue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
-      : "없음";
-  });
-}
-
-function startUse() {
-  const user = document.getElementById("userSelect").value;
-  if (!user) return alert("사용자를 선택하세요.");
-
-  db.collection("status").doc("current").get().then(doc => {
-    if (doc.exists && doc.data().user && doc.data().user !== "없음") {
-      alert("현재 다른 사용자가 홈택스를 사용 중입니다. '다음 순서 예약하기'를 이용해주세요.");
-      return;
-    }
-
-    const now = new Date();
-    const data = {
-      user,
-      startTime: now.toLocaleTimeString(),
-      timestamp: now,
-      nextUser: doc.exists && doc.data().nextUser ? doc.data().nextUser : "없음"
+    const firebaseConfig = {
+      apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
+      authDomain: "hometaxstatus.firebaseapp.com",
+      projectId: "hometaxstatus",
+      storageBucket: "hometaxstatus.appspot.com",
+      messagingSenderId: "35896080413",
+      appId: "1:35896080413:web:2c5971664492b1b0f79074"
     };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    db.collection("status").doc("current").set(data);
-    db.collection("hometaxLogs").add({ ...data, type: '시작' });
-    updateUI(user, data.startTime);
-  });
-}
-
-function reserveNext() {
-  const user = document.getElementById("userSelect").value;
-  if (!user) return alert("사용자를 선택하세요.");
-  const current = document.getElementById("currentUser").textContent;
-  if (current === user) return alert("이미 사용 중입니다.");
-
-  db.collection("status").doc("current").get().then(doc => {
-    const data = doc.exists ? doc.data() : {};
-    let nextQueue = data.nextUser ? data.nextUser.split(", ") : [];
-    if (nextQueue.includes(user)) {
-      alert("이미 예약자 명단에 있습니다.");
-      return;
-    }
-    nextQueue.push(user);
-    db.collection("status").doc("current").set({ ...data, nextUser: nextQueue.join(", ") }).then(() => {
-      db.collection("hometaxLogs").add({
-        user,
-        timestamp: new Date(),
-        type: '예약',
-        message: `${user} 님이 다음 순서로 예약했습니다.`
+    function updateUI(user, time) {
+      document.getElementById("currentUser").textContent = user;
+      document.getElementById("startTime").textContent = time;
+      db.collection("status").doc("current").get().then(doc => {
+        const data = doc.data();
+        const queue = data && data.nextUser ? data.nextUser.split(", ") : [];
+        document.getElementById("nextUser").innerHTML = queue.length > 0
+          ? queue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
+          : "없음";
       });
-      document.getElementById("nextUser").innerHTML = nextQueue.length > 0
-        ? nextQueue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
-        : "없음";
-      alert(`${user} 님이 다음 순서로 예약되었습니다.`);
-    });
-  });
-}
-
-
-function endUse() {
-  const prevUser = document.getElementById("currentUser").textContent;
-  if (prevUser === "없음") return alert("현재 사용 중인 사람이 없습니다.");
-  db.collection("status").doc("current").get().then(doc => {
-    const data = doc.data();
-    let nextQueue = data && data.nextUser ? data.nextUser.split(", ") : [];
-    const nextUser = nextQueue.length > 0 ? nextQueue.shift() : "없음";
-    const now = new Date();
-    if (nextUser !== "없음") {
-      const newData = {
-        user: nextUser,
-        startTime: now.toLocaleTimeString(),
-        timestamp: now
-      };
-      db.collection("status").doc("current").set({ ...newData, nextUser: nextQueue.join(", ") });
-      db.collection("hometaxLogs").add({ ...newData, type: '전환', message: `${nextUser} 님이 자동으로 사용을 시작했습니다.` });
-      alert(`${nextUser} 님! 지금 홈택스 사용이 가능합니다.`);
-      updateUI(nextUser, newData.startTime);
-    } else {
-      db.collection("hometaxLogs").add({ user: prevUser, timestamp: new Date(), type: '종료', message: `${prevUser} 님이 사용을 종료했습니다.` });
-      db.collection("status").doc("current").delete();
-      updateUI("없음", "-");
     }
-  });
-}
 
-function loadCurrentStatus() {
-  db.collection("status").doc("current").get().then(doc => {
-    if (doc.exists) {
-      const data = doc.data();
-      updateUI(data.user, data.startTime);
-    }
-  });
+    function startUse() {
+      const user = document.getElementById("userSelect").value;
+      if (!user) return alert("사용자를 선택하세요.");
 
-  db.collection("hometaxLogs")
-    .orderBy("timestamp", "desc")
-    .limit(30)
-    .onSnapshot(snapshot => {
-      const logDiv = document.getElementById("log");
-      logDiv.innerHTML = "<h3>최근 사용 로그</h3>";
-      snapshot.forEach(doc => {
-        const entry = doc.data();
-        const label = entry.type === '예약' ? '⏳' : entry.type === '전환' ? '🟦' : entry.type === '종료' ? '✅' : '🕒';
-        logDiv.innerHTML += `<p>${label} ${entry.message || (entry.startTime + ' - ' + entry.user)}</p>`;
+      db.collection("status").doc("current").get().then(doc => {
+        if (doc.exists && doc.data().user && doc.data().user !== "없음") {
+          alert("현재 다른 사용자가 홈택스를 사용 중입니다. '다음 순서 예약하기'를 이용해주세요.");
+          return;
+        }
+
+        const now = new Date();
+        const data = {
+          user,
+          startTime: now.toLocaleTimeString(),
+          timestamp: now,
+          nextUser: doc.exists && doc.data().nextUser ? doc.data().nextUser : "없음"
+        };
+
+        db.collection("status").doc("current").set(data);
+        db.collection("hometaxLogs").add({ ...data, type: '시작' });
+        updateUI(user, data.startTime);
       });
-    });
-}
+    }
 
-window.onload = loadCurrentStatus;
-</script>
+    function reserveNext() {
+      const user = document.getElementById("userSelect").value;
+      if (!user) return alert("사용자를 선택하세요.");
+      const current = document.getElementById("currentUser").textContent;
+      if (current === user) return alert("이미 사용 중입니다.");
+
+      db.collection("status").doc("current").get().then(doc => {
+        const data = doc.exists ? doc.data() : {};
+        let nextQueue = data.nextUser ? data.nextUser.split(", ") : [];
+        if (nextQueue.includes(user)) {
+          alert("이미 예약자 명단에 있습니다.");
+          return;
+        }
+        nextQueue.push(user);
+        db.collection("status").doc("current").set({ ...data, nextUser: nextQueue.join(", ") }).then(() => {
+          db.collection("hometaxLogs").add({
+            user,
+            timestamp: new Date(),
+            type: '예약',
+            message: `${user} 님이 다음 순서로 예약했습니다.`
+          });
+          document.getElementById("nextUser").innerHTML = nextQueue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>");
+          alert(`${user} 님이 다음 순서로 예약되었습니다.`);
+        });
+      });
+    }
+
+    function endUse() {
+      const prevUser = document.getElementById("currentUser").textContent;
+      if (prevUser === "없음") return alert("현재 사용 중인 사람이 없습니다.");
+      db.collection("status").doc("current").get().then(doc => {
+        const data = doc.data();
+        let nextQueue = data && data.nextUser ? data.nextUser.split(", ") : [];
+        const nextUser = nextQueue.length > 0 ? nextQueue.shift() : "없음";
+        const now = new Date();
+        if (nextUser !== "없음") {
+          const newData = {
+            user: nextUser,
+            startTime: now.toLocaleTimeString(),
+            timestamp: now
+          };
+          db.collection("status").doc("current").set({ ...newData, nextUser: nextQueue.join(", ") });
+          db.collection("hometaxLogs").add({ ...newData, type: '전환', message: `${nextUser} 님이 자동으로 사용을 시작했습니다.` });
+          alert(`${nextUser} 님! 지금 홈택스 사용이 가능합니다.`);
+          updateUI(nextUser, newData.startTime);
+        } else {
+          db.collection("hometaxLogs").add({ user: prevUser, timestamp: new Date(), type: '종료', message: `${prevUser} 님이 사용을 종료했습니다.` });
+          db.collection("status").doc("current").delete();
+          updateUI("없음", "-");
+        }
+      });
+    }
+
+    function loadCurrentStatus() {
+      db.collection("status").doc("current").get().then(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          updateUI(data.user, data.startTime);
+        }
+      });
+
+      db.collection("hometaxLogs")
+        .orderBy("timestamp", "desc")
+        .limit(30)
+        .onSnapshot(snapshot => {
+          const logDiv = document.getElementById("log");
+          logDiv.innerHTML = "<h3>최근 사용 로그</h3>";
+          snapshot.forEach(doc => {
+            const entry = doc.data();
+            const label = entry.type === '예약' ? '⏳' : entry.type === '전환' ? '🟦' : entry.type === '종료' ? '✅' : '🕒';
+            logDiv.innerHTML += `<p>${label} ${entry.message || (entry.startTime + ' - ' + entry.user)}</p>`;
+          });
+        });
+    }
+
+    window.onload = loadCurrentStatus;
+  </script>
+
   <button onclick="clearLogs()" style="position: fixed; bottom: 10px; left: 10px; font-size: 0.8em; padding: 6px 10px; background-color: #555; color: white; border: none; border-radius: 6px; opacity: 0.5;">초기화</button>
 
   <script>

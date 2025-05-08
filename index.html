@@ -1,4 +1,3 @@
-<!-- ✅ 정상 작동 전체 코드 (예약 순서, 충돌 방지, 실시간 로그 반영) -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -7,63 +6,20 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Pretendard&display=swap');
     body {
-      font-family: 'Pretendard', sans-serif;
-      background: linear-gradient(to right, #f0f4ff, #ffffff);
+      font-family: sans-serif;
       max-width: 700px;
       margin: 50px auto;
       padding: 20px;
       border-radius: 16px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-      text-align: center;
-      font-size: 1.2em;
+      background: #f9fafb;
     }
-    h1 {
-      font-size: 2.2em;
-      color: #1e3a8a;
-      margin-bottom: 30px;
-    }
-    .status {
-      background-color: #eef2ff;
-      padding: 20px;
-      border-radius: 12px;
-      margin: 30px 0;
-      font-size: 1.3em;
-      color: #111827;
-    }
-    button {
-      margin: 10px;
-      padding: 12px 24px;
-      font-size: 1.1em;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      background-color: #3b82f6;
-      color: white;
-      transition: background-color 0.3s;
-    }
-    button:hover {
-      background-color: #2563eb;
-    }
-    select {
-      font-size: 1.1em;
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    #log {
-      margin-top: 40px;
-      text-align: left;
-      font-size: 1em;
-      background-color: #f9fafb;
-      border-radius: 10px;
-      padding: 15px;
-      border: 1px solid #e5e7eb;
-    }
-    #log p {
-      margin: 5px 0;
-    }
+    h1 { font-size: 1.8em; color: #1e3a8a; text-align: center; }
+    .status { background: #eef; padding: 16px; border-radius: 10px; margin: 20px 0; }
+    button { margin: 8px; padding: 10px 20px; font-size: 1em; }
+    select { font-size: 1em; padding: 6px; }
+    #log { margin-top: 30px; padding: 10px; background: #fff; border: 1px solid #ccc; border-radius: 6px; }
   </style>
 </head>
 <body>
@@ -71,23 +27,24 @@
   <div class="status">
     <div><strong>현재 사용자:</strong> <span id="currentUser">없음</span></div>
     <div><strong>사용 시작 시간:</strong> <span id="startTime">-</span></div>
+    <div><strong>사용 시간:</strong> <span id="duration">-</span></div>
     <div><strong>👉 다음 사용자:</strong> <span id="nextUser">없음</span></div>
   </div>
   <div>
-    <label for="userSelect">사용자 선택:</label>
+    <label>사용자 선택:</label>
     <select id="userSelect">
-      <option value="">-- 사용자 선택 --</option>
-      <option value="김가영(S.C.M팀)">김가영(S.C.M팀)</option>
-      <option value="김경민(S.C.M팀)">김경민(S.C.M팀)</option>
-      <option value="김은정(영업관리실)">김은정(영업관리실)</option>
-      <option value="김원진(인사총무팀)">김원진(인사총무팀)</option>
-      <option value="박나영(S.C.M팀)">박나영(S.C.M팀)</option>
-      <option value="원효로(S.C.M팀)">원효로(S.C.M팀)</option>
-      <option value="이세연(재무팀)">이세연(재무팀)</option>
-      <option value="장경록(재무팀)">장경록(재무팀)</option>
-      <option value="장지혁(재무팀)">장지혁(재무팀)</option>
-      <option value="정지성(인사총무팀)">정지성(인사총무팀)</option>
-      <option value="한신애(인사총무팀)">한신애(인사총무팀)</option>
+      <option value="">-- 선택 --</option>
+      <option>김가영(S.C.M팀)</option>
+      <option>김경민(S.C.M팀)</option>
+      <option>김은정(영업관리실)</option>
+      <option>김원진(인사총무팀)</option>
+      <option>박나영(S.C.M팀)</option>
+      <option>원효로(S.C.M팀)</option>
+      <option>이세연(재무팀)</option>
+      <option>장경록(재무팀)</option>
+      <option>장지혁(재무팀)</option>
+      <option>정지성(인사총무팀)</option>
+      <option>한신애(인사총무팀)</option>
     </select>
   </div>
   <div>
@@ -95,6 +52,7 @@
     <button onclick="reserveNext()">다음 순서 예약하기</button>
     <button onclick="endUse()">사용 종료하기</button>
   </div>
+
   <div id="log"></div>
 
   <script>
@@ -112,6 +70,27 @@
     function updateUI(user, time) {
       document.getElementById("currentUser").textContent = user;
       document.getElementById("startTime").textContent = time;
+
+      clearInterval(window.durationInterval);
+      if (time && time !== '-' && user !== '없음') {
+        const [sh, sm, ss] = time.split(':').map(t => Number(t));
+        const start = new Date();
+        start.setHours(sh, sm, ss);
+        window.durationInterval = setInterval(() => {
+          const now = new Date();
+          let diff = now - start;
+          if (diff < 0) diff += 24 * 60 * 60 * 1000;
+          const mins = Math.floor(diff / 60000);
+          const secs = Math.floor((diff % 60000) / 1000);
+          const durationText = `${mins}분 ${secs}초`;
+          const durationElement = document.getElementById("duration");
+          durationElement.textContent = durationText;
+          durationElement.style.color = mins >= 30 ? 'red' : 'black';
+        }, 1000);
+      } else {
+        document.getElementById("duration").textContent = "-";
+      }
+
       db.collection("status").doc("current").get().then(doc => {
         const data = doc.data();
         const queue = data && data.nextUser ? data.nextUser.split(", ") : [];
@@ -130,18 +109,17 @@
           alert("현재 다른 사용자가 홈택스를 사용 중입니다. '다음 순서 예약하기'를 이용해주세요.");
           return;
         }
-
         const now = new Date();
+        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
         const data = {
           user,
-          startTime: now.toLocaleTimeString(),
+          startTime: timeStr,
           timestamp: now,
           nextUser: doc.exists && doc.data().nextUser ? doc.data().nextUser : "없음"
         };
-
         db.collection("status").doc("current").set(data);
         db.collection("hometaxLogs").add({ ...data, type: '시작' });
-        updateUI(user, data.startTime);
+        updateUI(user, timeStr);
       });
     }
 
@@ -180,16 +158,17 @@
         let nextQueue = data && data.nextUser ? data.nextUser.split(", ") : [];
         const nextUser = nextQueue.length > 0 ? nextQueue.shift() : "없음";
         const now = new Date();
+        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
         if (nextUser !== "없음") {
           const newData = {
             user: nextUser,
-            startTime: now.toLocaleTimeString(),
+            startTime: timeStr,
             timestamp: now
           };
           db.collection("status").doc("current").set({ ...newData, nextUser: nextQueue.join(", ") });
           db.collection("hometaxLogs").add({ ...newData, type: '전환', message: `${nextUser} 님이 자동으로 사용을 시작했습니다.` });
           alert(`${nextUser} 님! 지금 홈택스 사용이 가능합니다.`);
-          updateUI(nextUser, newData.startTime);
+          updateUI(nextUser, timeStr);
         } else {
           db.collection("hometaxLogs").add({ user: prevUser, timestamp: new Date(), type: '종료', message: `${prevUser} 님이 사용을 종료했습니다.` });
           db.collection("status").doc("current").delete();
@@ -221,22 +200,6 @@
     }
 
     window.onload = loadCurrentStatus;
-  </script>
-
-  <button onclick="clearLogs()" style="position: fixed; bottom: 10px; left: 10px; font-size: 0.8em; padding: 6px 10px; background-color: #555; color: white; border: none; border-radius: 6px; opacity: 0.5;">초기화</button>
-
-  <script>
-    function clearLogs() {
-      if (!confirm("정말 오늘 로그를 초기화하시겠습니까?")) return;
-      db.collection("hometaxLogs").get().then(snapshot => {
-        const batch = db.batch();
-        snapshot.forEach(doc => batch.delete(doc.ref));
-        return batch.commit();
-      }).then(() => {
-        alert("오늘 로그가 초기화되었습니다.");
-        location.reload();
-      });
-    }
   </script>
 </body>
 </html>

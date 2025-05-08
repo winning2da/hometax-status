@@ -98,8 +98,92 @@
   <div id="log"></div>
 
   <script>
-$1
-function loadCurrentStatus() {
+const firebaseConfig = {
+  apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
+  authDomain: "hometaxstatus.firebaseapp.com",
+  projectId: "hometaxstatus",
+  storageBucket: "hometaxstatus.appspot.com",
+  messagingSenderId: "35896080413",
+  appId: "1:35896080413:web:2c5971664492b1b0f79074"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function updateUI(user, time) {
+  document.getElementById("currentUser").textContent = user;
+  document.getElementById("startTime").textContent = time;
+  db.collection("status").doc("current").get().then(doc => {
+    const data = doc.data();
+    document.getElementById("nextUser").textContent = data && data.nextUser ? data.nextUser : "없음";
+  });
+}
+
+function startUse() {
+  const user = document.getElementById("userSelect").value;
+  if (!user) return alert("사용자를 선택하세요.");
+  const now = new Date();
+  const data = {
+    user,
+    startTime: now.toLocaleTimeString(),
+    timestamp: now
+  };
+  db.collection("status").doc("current").get().then(doc => {
+    const currentData = doc.exists ? doc.data() : {};
+    db.collection("status").doc("current").set({ ...data, nextUser: currentData.nextUser || "없음" });
+    db.collection("hometaxLogs").add({ ...data, type: '시작' });
+    updateUI(user, data.startTime);
+  });
+}
+
+function reserveNext() {
+  const user = document.getElementById("userSelect").value;
+  if (!user) return alert("사용자를 선택하세요.");
+  const current = document.getElementById("currentUser").textContent;
+  if (current === user) return alert("이미 사용 중입니다.");
+  db.collection("status").doc("current").get().then(doc => {
+    const data = doc.exists ? doc.data() : {};
+    db.collection("status").doc("current").set({
+      ...data,
+      nextUser: user
+    }).then(() => {
+      db.collection("hometaxLogs").add({
+        user,
+        timestamp: new Date(),
+        type: '예약',
+        message: `${user} 님이 다음 순서로 예약했습니다.`
+      });
+      document.getElementById("nextUser").textContent = user;
+      alert(`${user} 님이 다음 순서로 예약되었습니다.`);
+    });
+  });
+}
+
+function endUse() {
+  const prevUser = document.getElementById("currentUser").textContent;
+  if (prevUser === "없음") return alert("현재 사용 중인 사람이 없습니다.");
+  db.collection("status").doc("current").get().then(doc => {
+    const data = doc.data();
+    const nextUser = data && data.nextUser ? data.nextUser : "없음";
+    const now = new Date();
+    if (nextUser !== "없음") {
+      const newData = {
+        user: nextUser,
+        startTime: now.toLocaleTimeString(),
+        timestamp: now
+      };
+      db.collection("status").doc("current").set(newData);
+      db.collection("hometaxLogs").add({ ...newData, type: '전환', message: `${nextUser} 님이 자동으로 사용을 시작했습니다.` });
+      alert(`${nextUser} 님! 지금 홈택스 사용이 가능합니다.`);
+      updateUI(nextUser, newData.startTime);
+    } else {
+      db.collection("hometaxLogs").add({ user: prevUser, timestamp: new Date(), type: '종료', message: `${prevUser} 님이 사용을 종료했습니다.` });
+      db.collection("status").doc("current").delete();
+      updateUI("없음", "-");
+    }
+  });
+}
+
+function loadCurrentStatus() { {
   db.collection("status").doc("current").get().then(doc => {
     if (doc.exists) {
       const data = doc.data();

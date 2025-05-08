@@ -161,6 +161,11 @@
     const startTimeRef = db.ref("startTime");
     const queueRef = db.ref("queue");
 
+    // 알림 권한 요청
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
     function getSelectedName() {
       return document.getElementById("user-select").value;
     }
@@ -168,6 +173,7 @@
     function startUse() {
       const name = getSelectedName();
       if (!name) return alert("사용자를 선택해주세요.");
+
       currentUserRef.once("value").then(snapshot => {
         if (snapshot.val()) {
           alert("이미 사용 중입니다.");
@@ -193,6 +199,16 @@
           currentUserRef.set(next);
           startTimeRef.set(new Date().toLocaleTimeString());
           queueRef.set(queue.slice(1));
+
+          // 🔔 알림 전송
+          if (Notification.permission === "granted") {
+            new Notification("홈택스 순서 알림", {
+              body: `${next}님! 홈택스 사용 순서입니다.`,
+              icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png"
+            });
+          } else {
+            alert(`${next}님 순서입니다.`);
+          }
         }
       });
     }

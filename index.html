@@ -75,12 +75,28 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      background-color: #007bff;
       color: white;
       transition: background-color 0.2s ease;
     }
 
-    button:hover {
+    .start-btn {
+      background-color: #28a745;
+    }
+    .start-btn:hover {
+      background-color: #218838;
+    }
+
+    .end-btn {
+      background-color: #dc3545;
+    }
+    .end-btn:hover {
+      background-color: #c82333;
+    }
+
+    .reserve-btn {
+      background-color: #007bff;
+    }
+    .reserve-btn:hover {
       background-color: #0056b3;
     }
 
@@ -132,9 +148,9 @@
     </select>
 
     <div class="button-group">
-      <button onclick="startUse()">사용 시작</button>
-      <button onclick="endUse()">사용 종료</button>
-      <button onclick="reserve()">예약</button>
+      <button class="start-btn" onclick="startUse()">사용 시작</button>
+      <button class="end-btn" onclick="endUse()">사용 종료</button>
+      <button class="reserve-btn" onclick="reserve()">예약</button>
     </div>
 
     <div class="queue-section">
@@ -200,7 +216,7 @@
           startTimeRef.set(new Date().toLocaleTimeString());
           queueRef.set(queue.slice(1));
 
-          // 🔔 알림 전송
+          // 알림
           if (Notification.permission === "granted") {
             new Notification("홈택스 순서 알림", {
               body: `${next}님! 홈택스 사용 순서입니다.`,

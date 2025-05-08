@@ -7,19 +7,53 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Pretendard, sans-serif;
+      background: linear-gradient(to right, #f0f4ff, #ffffff);
       max-width: 700px;
       margin: 50px auto;
       padding: 20px;
       border-radius: 16px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-      background: #f9fafb;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
     }
-    h1 { font-size: 1.8em; color: #1e3a8a; text-align: center; }
-    .status { background: #eef; padding: 16px; border-radius: 10px; margin: 20px 0; }
-    button { margin: 8px; padding: 10px 20px; font-size: 1em; }
-    select { font-size: 1em; padding: 6px; }
-    #log { margin-top: 30px; padding: 10px; background: #fff; border: 1px solid #ccc; border-radius: 6px; }
+    h1 {
+      font-size: 1.8em;
+      color: #1e3a8a;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .status {
+      background-color: #eef3ff;
+      padding: 16px;
+      border-radius: 10px;
+      margin: 20px 0;
+      line-height: 1.6;
+    }
+    select, button {
+      font-size: 1em;
+      padding: 10px;
+      margin: 6px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #3b82f6;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #2563eb;
+    }
+    #log {
+      margin-top: 30px;
+      padding: 15px;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+    #log h3 {
+      margin-top: 0;
+    }
   </style>
 </head>
 <body>
@@ -33,7 +67,7 @@
   <div>
     <label>사용자 선택:</label>
     <select id="userSelect">
-      <option value="">-- 선택 --</option>
+      <option value="">-- 사용자 선택 --</option>
       <option>김가영(S.C.M팀)</option>
       <option>김경민(S.C.M팀)</option>
       <option>김은정(영업관리실)</option>
@@ -52,17 +86,11 @@
     <button onclick="reserveNext()">다음 순서 예약하기</button>
     <button onclick="endUse()">사용 종료하기</button>
   </div>
-
   <div id="log"></div>
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyBb6gSE4W-sklJK0NDM9XS23ddmnbKp8CM",
-      authDomain: "hometaxstatus.firebaseapp.com",
-      projectId: "hometaxstatus",
-      storageBucket: "hometaxstatus.appspot.com",
-      messagingSenderId: "35896080413",
-      appId: "1:35896080413:web:2c5971664492b1b0f79074"
+      // 여기에 본인의 Firebase 설정을 입력하세요
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -82,10 +110,7 @@
           if (diff < 0) diff += 24 * 60 * 60 * 1000;
           const mins = Math.floor(diff / 60000);
           const secs = Math.floor((diff % 60000) / 1000);
-          const durationText = `${mins}분 ${secs}초`;
-          const durationElement = document.getElementById("duration");
-          durationElement.textContent = durationText;
-          durationElement.style.color = mins >= 30 ? 'red' : 'black';
+          document.getElementById("duration").textContent = `${mins}분 ${secs}초`;
         }, 1000);
       } else {
         document.getElementById("duration").textContent = "-";
@@ -93,7 +118,7 @@
 
       db.collection("status").doc("current").get().then(doc => {
         const data = doc.data();
-        const queue = data && data.nextUser ? data.nextUser.split(", ") : [];
+        const queue = data && data.nextUser ? data.nextUser.split(", ").filter(x => x && x !== '없음') : [];
         document.getElementById("nextUser").innerHTML = queue.length > 0
           ? queue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
           : "없음";
@@ -103,103 +128,62 @@
     function startUse() {
       const user = document.getElementById("userSelect").value;
       if (!user) return alert("사용자를 선택하세요.");
-
-      db.collection("status").doc("current").get().then(doc => {
-        if (doc.exists && doc.data().user && doc.data().user !== "없음") {
-          alert("현재 다른 사용자가 홈택스를 사용 중입니다. '다음 순서 예약하기'를 이용해주세요.");
-          return;
-        }
-        const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-        const data = {
-          user,
-          startTime: timeStr,
-          timestamp: now,
-          nextUser: doc.exists && doc.data().nextUser ? doc.data().nextUser : "없음"
-        };
-        db.collection("status").doc("current").set(data);
-        db.collection("hometaxLogs").add({ ...data, type: '시작' });
-        updateUI(user, timeStr);
+      const now = new Date();
+      const time = now.toTimeString().split(" ")[0];
+      db.collection("status").doc("current").set({
+        user,
+        time,
+        nextUser: ""
+      }).then(() => {
+        updateUI(user, time);
+        db.collection("logs").add({ text: `${user} 님이 사용을 시작했습니다.`, timestamp: now });
       });
     }
 
     function reserveNext() {
       const user = document.getElementById("userSelect").value;
       if (!user) return alert("사용자를 선택하세요.");
-      const current = document.getElementById("currentUser").textContent;
-      if (current === user) return alert("이미 사용 중입니다.");
-
       db.collection("status").doc("current").get().then(doc => {
-        const data = doc.exists ? doc.data() : {};
-        let nextQueue = data.nextUser ? data.nextUser.split(", ") : [];
-        if (nextQueue.includes(user)) {
-          alert("이미 예약자 명단에 있습니다.");
-          return;
+        const data = doc.data();
+        let queue = data.nextUser ? data.nextUser.split(", ") : [];
+        if (!queue.includes(user)) {
+          queue.push(user);
+          db.collection("status").doc("current").update({ nextUser: queue.join(", ") });
+          db.collection("logs").add({ text: `${user} 님이 다음 순서로 예약했습니다.`, timestamp: new Date() });
         }
-        nextQueue.push(user);
-        db.collection("status").doc("current").set({ ...data, nextUser: nextQueue.join(", ") }).then(() => {
-          db.collection("hometaxLogs").add({
-            user,
-            timestamp: new Date(),
-            type: '예약',
-            message: `${user} 님이 다음 순서로 예약했습니다.`
-          });
-          document.getElementById("nextUser").innerHTML = nextQueue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>");
-          alert(`${user} 님이 다음 순서로 예약되었습니다.`);
-        });
+        updateUI(data.user, data.time);
       });
     }
 
     function endUse() {
-      const prevUser = document.getElementById("currentUser").textContent;
-      if (prevUser === "없음") return alert("현재 사용 중인 사람이 없습니다.");
       db.collection("status").doc("current").get().then(doc => {
         const data = doc.data();
-        let nextQueue = data && data.nextUser ? data.nextUser.split(", ") : [];
-        const nextUser = nextQueue.length > 0 ? nextQueue.shift() : "없음";
+        const user = data.user;
+        const queue = data.nextUser ? data.nextUser.split(", ") : [];
+        const next = queue.shift();
         const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-        if (nextUser !== "없음") {
-          const newData = {
-            user: nextUser,
-            startTime: timeStr,
-            timestamp: now
-          };
-          db.collection("status").doc("current").set({ ...newData, nextUser: nextQueue.join(", ") });
-          db.collection("hometaxLogs").add({ ...newData, type: '전환', message: `${nextUser} 님이 자동으로 사용을 시작했습니다.` });
-          alert(`${nextUser} 님! 지금 홈택스 사용이 가능합니다.`);
-          updateUI(nextUser, timeStr);
-        } else {
-          db.collection("hometaxLogs").add({ user: prevUser, timestamp: new Date(), type: '종료', message: `${prevUser} 님이 사용을 종료했습니다.` });
-          db.collection("status").doc("current").delete();
-          updateUI("없음", "-");
-        }
-      });
-    }
-
-    function loadCurrentStatus() {
-      db.collection("status").doc("current").get().then(doc => {
-        if (doc.exists) {
-          const data = doc.data();
-          updateUI(data.user, data.startTime);
-        }
-      });
-
-      db.collection("hometaxLogs")
-        .orderBy("timestamp", "desc")
-        .limit(30)
-        .onSnapshot(snapshot => {
-          const logDiv = document.getElementById("log");
-          logDiv.innerHTML = "<h3>최근 사용 로그</h3>";
-          snapshot.forEach(doc => {
-            const entry = doc.data();
-            const label = entry.type === '예약' ? '⏳' : entry.type === '전환' ? '🟦' : entry.type === '종료' ? '✅' : '🕒';
-            logDiv.innerHTML += `<p>${label} ${entry.message || (entry.startTime + ' - ' + entry.user)}</p>`;
-          });
+        db.collection("status").doc("current").set({
+          user: next || "없음",
+          time: next ? now.toTimeString().split(" ")[0] : "-",
+          nextUser: queue.join(", ")
+        }).then(() => {
+          db.collection("logs").add({ text: `${user} 님이 사용을 종료했습니다.`, timestamp: now });
+          if (next) db.collection("logs").add({ text: `${next} 님이 자동으로 사용을 시작했습니다.`, timestamp: now });
+          updateUI(next || "없음", next ? now.toTimeString().split(" ")[0] : "-");
         });
+      });
     }
 
-    window.onload = loadCurrentStatus;
+    db.collection("status").doc("current").onSnapshot(doc => {
+      const data = doc.data();
+      updateUI(data.user, data.time);
+    });
+
+    db.collection("logs").orderBy("timestamp", "desc").limit(10).onSnapshot(snapshot => {
+      const logDiv = document.getElementById("log");
+      logDiv.innerHTML = '<h3>최근 사용 로그</h3>' +
+        snapshot.docs.map(doc => `🕒 ${doc.data().text}`).join("<br>");
+    });
   </script>
 </body>
 </html>

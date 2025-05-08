@@ -57,7 +57,7 @@
   </style>
 </head>
 <body>
-  <h1>🏠 에쎈테크 홈택스 사용 현황</h1>
+  <h1>🏠 에쌼테크 홈택스 사용 현황</h1>
   <div class="status">
     <div><strong>현재 사용자:</strong> <span id="currentUser">없음</span></div>
     <div><strong>사용 시작 시간:</strong> <span id="startTime">-</span></div>
@@ -73,10 +73,10 @@
       <option>김은정(영업관리실)</option>
       <option>김원진(인사총무팀)</option>
       <option>박나영(S.C.M팀)</option>
-      <option>원효로(S.C.M팀)</option>
-      <option>이세연(재무팀)</option>
-      <option>장경록(재무팀)</option>
-      <option>장지혁(재무팀)</option>
+      <option>원협로(S.C.M팀)</option>
+      <option>이세연(장모팀)</option>
+      <option>장경록(장모팀)</option>
+      <option>장지혁(장모팀)</option>
       <option>정지성(인사총무팀)</option>
       <option>한신애(인사총무팀)</option>
     </select>
@@ -95,95 +95,33 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    function updateUI(user, time) {
-      document.getElementById("currentUser").textContent = user;
-      document.getElementById("startTime").textContent = time;
-
-      clearInterval(window.durationInterval);
-      if (time && time !== '-' && user !== '없음') {
-        const [sh, sm, ss] = time.split(':').map(t => Number(t));
-        const start = new Date();
-        start.setHours(sh, sm, ss);
-        window.durationInterval = setInterval(() => {
-          const now = new Date();
-          let diff = now - start;
-          if (diff < 0) diff += 24 * 60 * 60 * 1000;
-          const mins = Math.floor(diff / 60000);
-          const secs = Math.floor((diff % 60000) / 1000);
-          document.getElementById("duration").textContent = `${mins}분 ${secs}초`;
-        }, 1000);
-      } else {
-        document.getElementById("duration").textContent = "-";
-      }
-
-      db.collection("status").doc("current").get().then(doc => {
-        const data = doc.data();
-        const queue = data && data.nextUser ? data.nextUser.split(", ").filter(x => x && x !== '없음') : [];
-        document.getElementById("nextUser").innerHTML = queue.length > 0
-          ? queue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
-          : "없음";
-      });
-    }
-
-    function startUse() {
-      const user = document.getElementById("userSelect").value;
-      if (!user) return alert("사용자를 선택하세요.");
-      const now = new Date();
-      const time = now.toTimeString().split(" ")[0];
-      db.collection("status").doc("current").set({
-        user,
-        time,
-        nextUser: ""
-      }).then(() => {
-        updateUI(user, time);
-        db.collection("logs").add({ text: `${user} 님이 사용을 시작했습니다.`, timestamp: now });
-      });
-    }
-
     function reserveNext() {
       const user = document.getElementById("userSelect").value;
       if (!user) return alert("사용자를 선택하세요.");
-      db.collection("status").doc("current").get().then(doc => {
-        const data = doc.data();
-        let queue = data.nextUser ? data.nextUser.split(", ").filter(x => x && x !== '없음') : [];
-        if (!queue.includes(user)) {
-          queue.push(user);
-          db.collection("status").doc("current").update({ nextUser: queue.join(", ") });
-          db.collection("logs").add({ text: `${user} 님이 다음 순서로 예약했습니다.`, timestamp: new Date() });
-        }
-        updateUI(data.user, data.time);
-      });
-    }
+      const current = document.getElementById("currentUser").textContent;
+      if (current === user) return alert("이미 사용 중입니다.");
 
-    function endUse() {
       db.collection("status").doc("current").get().then(doc => {
-        const data = doc.data();
-        const user = data.user;
-        let queue = data.nextUser ? data.nextUser.split(", ").filter(x => x && x !== '없음') : [];
-        const next = queue.shift();
-        const now = new Date();
+        const data = doc.exists ? doc.data() : {};
+        let nextQueue = data.nextUser ? data.nextUser.split(", ") : [];
+
+        if (nextQueue.includes(user)) {
+          alert("이미 예약자 명단에 있습니다.");
+          return;
+        }
+
+        nextQueue.push(user);
         db.collection("status").doc("current").set({
-          user: next || "없음",
-          time: next ? now.toTimeString().split(" ")[0] : "-",
-          nextUser: queue.join(", ")
-        }).then(() => {
-          db.collection("logs").add({ text: `${user} 님이 사용을 종료했습니다.`, timestamp: now });
-          if (next) db.collection("logs").add({ text: `${next} 님이 자동으로 사용을 시작했습니다.`, timestamp: now });
-          updateUI(next || "없음", next ? now.toTimeString().split(" ")[0] : "-");
+          ...data,
+          nextUser: nextQueue.join(", ")
+        });
+        db.collection("hometaxLogs").add({
+          user,
+          timestamp: new Date(),
+          text: `${user} 님이 다음 순서로 예약했습니다.`
         });
       });
     }
-
-    db.collection("status").doc("current").onSnapshot(doc => {
-      const data = doc.data();
-      updateUI(data.user, data.time);
-    });
-
-    db.collection("logs").orderBy("timestamp", "desc").limit(10).onSnapshot(snapshot => {
-      const logDiv = document.getElementById("log");
-      logDiv.innerHTML = '<h3>최근 사용 로그</h3>' +
-        snapshot.docs.map(doc => `🕒 ${doc.data().text}`).join("<br>");
-    });
   </script>
 </body>
 </html>

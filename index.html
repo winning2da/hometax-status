@@ -165,7 +165,10 @@ function reserveNext() {
         type: '예약',
         message: `${user} 님이 다음 순서로 예약했습니다.`
       });
-      document.getElementById("nextUser").textContent = nextUser;
+      const queue = nextUser.split(", ");
+      document.getElementById("nextUser").innerHTML = queue.length > 0
+        ? queue.map((name, i) => `${i + 1}순위: ${name}`).join("<br>")
+        : "없음";
       alert(`${user} 님이 다음 순서로 예약되었습니다.`);
     });
   });

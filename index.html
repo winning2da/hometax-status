@@ -119,9 +119,12 @@
         startTime: now.toLocaleTimeString(),
         timestamp: now
       };
-      db.collection("status").doc("current").set(data);
-      db.collection("hometaxLogs").add({ ...data, type: '시작' });
-      updateUI(user, data.startTime);
+      db.collection("status").doc("current").get().then(doc => {
+        const currentData = doc.exists ? doc.data() : {};
+        db.collection("status").doc("current").set({ ...data, nextUser: currentData.nextUser || "없음" });
+        db.collection("hometaxLogs").add({ ...data, type: '시작' });
+        updateUI(user, data.startTime);
+      });
     }
 
     function endUse() {
@@ -168,8 +171,8 @@
         }
       });
 
-      db.collection("hometaxLogs").orderBy("timestamp", "desc").limit(30).get()
-        .then(snapshot => {
+      db.collection("hometaxLogs").orderBy("timestamp", "desc").limit(30)
+        .onSnapshot(snapshot => {
           const logDiv = document.getElementById("log");
           logDiv.innerHTML = "<h3>최근 사용 로그</h3>";
           snapshot.forEach(doc => {
@@ -177,6 +180,7 @@
             const label = entry.type === '예약' ? '⏳' : entry.type === '전환' ? '🟦' : entry.type === '종료' ? '✅' : '🕒';
             logDiv.innerHTML += `<p>${label} ${entry.message || (entry.startTime + ' - ' + entry.user)}</p>`;
           });
+        });
         });
     }
 
